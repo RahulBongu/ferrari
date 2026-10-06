@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -21,12 +21,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Checkout LFS objects
+      - name: Checkout Git LFS objects
         run: git lfs checkout
 
       - name: Set up Node.js
@@ -38,19 +38,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build project for GitHub Pages
         env:
           VITE_BASE_PATH: /ferrari/
         run: npm run build
 
-      - name: Setup Pages
+      - name: Setup GitHub Pages configuration
+        id: pages
         uses: actions/configure-pages@v5
+        continue-on-error: true
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./dist"
+        continue-on-error: true
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages (Actions)
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Deploy to gh-pages branch (Dual Fallback)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist

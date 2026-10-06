@@ -31,49 +31,56 @@ Repository: **[https://github.com/RahulBongu/ferrari](https://github.com/RahulBo
 ## ✨ Key Features
 
 ### 🎬 1. Cinematic Hero Welcome
-- **4K Autoplay Video**: Atmospheric footage of Ferrari hypercars on track.
-- **Intelligent Audio Engine**: Smooth volume fade-in upon intentional user interaction or the "SOUND ON" toggle, fully adhering to modern browser autoplay security policies.
-- **Smooth Page Transitions**: Fluid zoom and fade transitions into the garage showroom.
+- **4K Autoplay Video**: High-definition track footage of Ferrari hypercars at speed.
+- **Instant Hero Backdrop**: Preloaded high-resolution hero imagery ensures zero blank or black flash while media streams.
+- **Intelligent Audio Engine**: Smooth sinusoidal volume fade-in upon user interaction or the "SOUND ON" toggle, strictly following modern browser autoplay security policies across Chrome, Safari, Edge, and Firefox.
+- **Cinematic Transition**: Dynamic zoom and audio burst transitioning seamlessly into the digital showroom.
 
 ### 💥 2. 240-Frame 4K Exploded Scrollytelling View
-- **Interactive Mechanical Breakdown**: Scrub through an ultra-crisp 240-frame sequence disassembling the **Ferrari LaFerrari** down to its carbon-fiber tub, V12 powertrain, and active aerodynamics.
+- **Interactive Mechanical Breakdown**: Scrub through an ultra-crisp 240-frame sequence disassembling the **Ferrari LaFerrari** down to its carbon-fiber tub, V12 powertrain, dihedral doors, and active aerodynamics.
+- **Top Inline Scroll Guide**: Refined, pulsating `SCROLL DOWN` guide capsule situated directly beside the Ferrari LaFerrari title for intuitive user orientation.
 - **Dynamic Scroll Acoustics**: Real-time synthesized scrolling audio that adapts to scroll direction, paired with an authentic high-RPM V12 throttle blast at the transition point.
-- **Adaptive Canvas Renderer**: Zero black-flash fallback and responsive aspect scaling across ultra-wide and mobile viewports.
+- **Adaptive Canvas Renderer**: Zero black-flash fallback and responsive aspect scaling across ultra-wide monitors, laptops, and mobile viewports.
 
 ### 🌐 3. Interactive 3D Studio (WebGL / Three.js)
 - **360° Free Orbit & Zoom**: Inspect photorealistic `.glb` 3D models of legendary Ferraris with orbit controls, auto-spin idle rotation, and damping physics.
-- **Studio Lighting & Shadows**: Ambient environment maps with soft studio floor shadows and realistic metallic flake paint shaders.
-- **Multi-Angle Camera Presets**: One-click camera pivots between 3D Isometric, Top Profile, Side Profile, and Cockpit views.
+- **Studio Lighting & Reflections**: Ambient environment maps with soft studio floor contact shadows and metallic flake automotive paint shaders.
+- **Multi-Angle Camera Presets**: One-click camera pivots between 3D Perspective, Top Profile, Side Profile, and Rear Angle.
+- **Live 3D Scuderia Shield**: Interactive rotating 3D Ferrari Cavallino Rampante logo in the collection showroom.
 
 ### 📊 4. Telemetry Specs & Direct Comparison Suite
 - **Side-by-Side Analysis**: Compare any two models across engine displacement, horsepower (CV), torque, 0-100 km/h sprint times, top speed, dry weight, and aerodynamic downforce.
-- **Quick Selection Matrix**: Effortlessly swap, remove, and benchmark cars against each other.
+- **Quick Selection Matrix**: Effortlessly swap, remove, and benchmark cars against each other with instant badge feedback.
 
-### 🌓 5. Dual Scuderia Aesthetics (Dark & Light Mode)
+### 🔊 5. Web Audio API Acoustic Engine
+- **Synthesized Engine Acoustics**: Procedurally generates harmonic engine frequencies, cylinder pulses, and throttle revs via the Web Audio API.
+- **Directional Sound Design**: Exploded scrub acoustics respond dynamically to scroll momentum and direction.
+
+### 🌓 6. Dual Scuderia Aesthetics (Dark & Light Mode)
 - **Rosso Corsa Accents**: Handcrafted color schemes tuned for high-contrast visibility and racing aesthetics in both dark carbon-fiber and clean studio light themes.
-- **Custom Ferrari Typography**: Condensed racing title typography, monospace telemetry readouts, and clean body text.
+- **Ferrari Racing Typography**: High-impact condensed display titles, monospace technical telemetry readouts, and clean sans-serif body typography.
 
 ---
 
 ## 🏎️ Vehicle Lineup
 
-| Vehicle | Era | Powertrain | Top Speed | 0-100 km/h |
-| :--- | :--- | :--- | :--- | :--- |
-| **Ferrari 288 GTO** | 1984 | 2.8L Twin-Turbo V8 | 305 km/h | 4.8 s |
-| **Ferrari F40** | 1987 | 2.9L Twin-Turbo V8 | 324 km/h | 4.1 s |
-| **Ferrari 550 Barchetta** | 2000 | 5.5L Naturally Aspirated V12 | 320 km/h | 4.4 s |
-| **Ferrari 599 GTO** | 2010 | 6.0L Naturally Aspirated V12 | 335 km/h | 3.3 s |
-| **Ferrari 599XX Evolution** | 2011 | 6.0L Track-Only V12 | 345 km/h | 2.9 s |
-| **Ferrari LaFerrari** | 2013 | 6.3L V12 + HY-KERS Electric | 350 km/h | 2.4 s |
-| **Ferrari 488 Pista Spider** | 2019 | 3.9L Twin-Turbo V8 | 340 km/h | 2.85 s |
-| **Ferrari Monza SP2** | 2019 | 6.5L Naturally Aspirated V12 | > 300 km/h | 2.9 s |
-| **Ferrari F1 (SF90)** | 2019 | 1.6L Turbo Hybrid V6 | 360 km/h | 1.85 s |
-| **Ferrari F8 Spider** | 2020 | 3.9L Twin-Turbo V8 | 340 km/h | 2.9 s |
-| **Ferrari Daytona SP3** | 2022 | 6.5L Naturally Aspirated V12 | 340 km/h | 2.85 s |
-| **Ferrari 296 GT3** | 2023 | 3.0L 120° Twin-Turbo V6 | 290 km/h | 3.0 s |
-| **Ferrari Purosangue** | 2023 | 6.5L Naturally Aspirated V12 | 310 km/h | 3.3 s |
-| **Ferrari SF90 Spider Mansory** | 2023 | 4.0L Twin-Turbo V8 + Tri-Motor | 355 km/h | 2.4 s |
-| **Ferrari 12Cilindri** | 2025 | 6.5L Naturally Aspirated V12 | > 340 km/h | 2.9 s |
+| Vehicle | Era | Powertrain | Top Speed | 0-100 km/h | Power (CV) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Ferrari 288 GTO** | 1984 | 2.8L Twin-Turbo V8 | 305 km/h | 4.8 s | 400 CV |
+| **Ferrari F40** | 1987 | 2.9L Twin-Turbo V8 | 324 km/h | 4.1 s | 478 CV |
+| **Ferrari 550 Barchetta** | 2000 | 5.5L Naturally Aspirated V12 | 320 km/h | 4.4 s | 485 CV |
+| **Ferrari 599 GTO** | 2010 | 6.0L Naturally Aspirated V12 | 335 km/h | 3.3 s | 670 CV |
+| **Ferrari 599XX Evolution** | 2011 | 6.0L Track-Only V12 | 345 km/h | 2.9 s | 750 CV |
+| **Ferrari LaFerrari** | 2013 | 6.3L V12 + HY-KERS Electric | 350 km/h | 2.4 s | 963 CV |
+| **Ferrari 488 Pista Spider** | 2019 | 3.9L Twin-Turbo V8 | 340 km/h | 2.85 s | 720 CV |
+| **Ferrari Monza SP2** | 2019 | 6.5L Naturally Aspirated V12 | > 300 km/h | 2.9 s | 810 CV |
+| **Ferrari F1 (SF90)** | 2019 | 1.6L Turbo Hybrid V6 | 360 km/h | 1.85 s | ~1000 CV |
+| **Ferrari F8 Spider** | 2020 | 3.9L Twin-Turbo V8 | 340 km/h | 2.9 s | 720 CV |
+| **Ferrari Daytona SP3** | 2022 | 6.5L Naturally Aspirated V12 | 340 km/h | 2.85 s | 840 CV |
+| **Ferrari 296 GT3** | 2023 | 3.0L 120° Twin-Turbo V6 | 290 km/h | 3.0 s | 600 CV |
+| **Ferrari Purosangue** | 2023 | 6.5L Naturally Aspirated V12 | 310 km/h | 3.3 s | 725 CV |
+| **Ferrari SF90 Spider Mansory** | 2023 | 4.0L Twin-Turbo V8 + Tri-Motor | 355 km/h | 2.4 s | 1100 CV |
+| **Ferrari 12Cilindri** | 2025 | 6.5L Naturally Aspirated V12 | > 340 km/h | 2.9 s | 830 CV |
 
 ---
 
@@ -85,6 +92,7 @@ Repository: **[https://github.com/RahulBongu/ferrari](https://github.com/RahulBo
 - **3D Graphics**: [Three.js](https://threejs.org/) + [@react-three/fiber](https://docs.pmnd.rs/react-three-fiber) + [@react-three/drei](https://github.com/pmndrs/drei)
 - **State Management**: [Zustand](https://github.com/pmndrs/zustand)
 - **Routing**: [React Router v7](https://reactrouter.com/) (with SPA query-param redirection for GitHub Pages)
+- **Audio Synthesis**: Native Web Audio API (`AudioContext`, `GainNode`, oscillator harmonics)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Asset Storage**: [Git LFS](https://git-lfs.com/) (for 3D `.glb` meshes & `.webm` media files)
 
@@ -144,18 +152,17 @@ npm run build
 
 ## 🌐 GitHub Pages Deployment Guide
 
-This project includes an automated **GitHub Actions CI/CD pipeline** located at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+This project includes an automated **dual-channel deployment pipeline** located at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+1. **GitHub Actions Pages Artifact**: Deploys directly via the new GitHub Pages pipeline.
+2. **`gh-pages` Branch Fallback**: Automatically updates the `gh-pages` branch for zero-config deployments.
 
-### Enabling Deployment on Your Fork/Repo:
-1. Navigate to your repository on GitHub: **`https://github.com/RahulBongu/ferrari`**
+### Enabling Deployment on Your GitHub Repository:
+1. Open your repository on GitHub: **`https://github.com/RahulBongu/ferrari`**
 2. Click on **Settings** (top right tab).
-3. In the left navigation, click **Pages** (under *Code and automation*).
-4. Under **Build and deployment > Source**, select **GitHub Actions**.
-5. Push to the `main` branch:
-   ```bash
-   git push origin main
-   ```
-6. The GitHub Actions runner will checkout LFS assets, run `npm run build`, and deploy the production bundle to GitHub Pages automatically.
+3. In the left sidebar, click **Pages** (under *Code and automation*).
+4. Under **Build and deployment > Source**, select **GitHub Actions** (or **Deploy from a branch** → select `gh-pages`).
+5. Any push to `main` will build and publish the live site at:  
+   👉 **`https://rahulbongu.github.io/ferrari/`**
 
 ---
 

@@ -359,7 +359,7 @@ export const ExplodedViewSection: React.FC = () => {
       {/* Sticky 100vh Viewport Stage with ample top clearance for navbar */}
       <div className="sticky top-0 left-0 w-full h-screen overflow-hidden flex flex-col justify-between px-6 sm:px-12 pt-24 sm:pt-28 pb-8 pointer-events-none">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 z-10">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 z-10 pointer-events-auto">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="w-2.5 h-2.5 bg-[#d40000] rotate-45" />
@@ -367,9 +367,25 @@ export const ExplodedViewSection: React.FC = () => {
                 ENGINEERING EXPLODED VIEW
               </span>
             </div>
-            <h2 className="font-display font-black text-3xl sm:text-5xl uppercase tracking-wider text-[#d40000] drop-shadow-[0_0_30px_rgba(212,0,0,0.5)]">
-              FERRARI LAFERRARI
-            </h2>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <h2 className="font-display font-black text-3xl sm:text-5xl uppercase tracking-wider text-[#d40000] drop-shadow-[0_0_30px_rgba(212,0,0,0.5)]">
+                FERRARI LAFERRARI
+              </h2>
+              {currentFrameIndex < 35 && (
+                <button
+                  onClick={() => {
+                    window.scrollBy({ top: window.innerHeight * 0.9, behavior: "smooth" });
+                  }}
+                  className="group relative flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000] shadow-[0_0_15px_rgba(212,0,0,0.55),inset_0_0_10px_rgba(212,0,0,0.2)] hover:shadow-[0_0_25px_rgba(212,0,0,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer pointer-events-auto"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
+                  <span className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.2em] uppercase font-bold text-white !text-white drop-shadow-sm">
+                    SCROLL DOWN
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
+                </button>
+              )}
+            </div>
             <p className="font-mono-tech text-[11px] tracking-widest !text-black font-extrabold uppercase mt-1">
               SCROLL DOWN TO EXPLODE &middot; SCROLL UP TO REASSEMBLE
             </p>
@@ -402,23 +418,7 @@ export const ExplodedViewSection: React.FC = () => {
           </div>
         )}
 
-        {/* Scroll Down Guide Capsule Button: Located ABOVE the car, compact & refined */}
-        {currentFrameIndex < 35 && (
-          <div className="absolute top-[23%] sm:top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto transition-all duration-500 animate-in fade-in">
-            <button
-              onClick={() => {
-                window.scrollBy({ top: window.innerHeight * 0.9, behavior: "smooth" });
-              }}
-              className="group relative flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000] shadow-[0_0_15px_rgba(212,0,0,0.55),inset_0_0_10px_rgba(212,0,0,0.2)] hover:shadow-[0_0_25px_rgba(212,0,0,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
-              <span className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.2em] uppercase font-bold text-white !text-white drop-shadow-sm">
-                SCROLL DOWN
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
-            </button>
-          </div>
-        )}
+
 
         {/* Bottom Status & Progress Bar */}
         <div className="flex items-end justify-between z-10 gap-4">

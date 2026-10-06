@@ -24,6 +24,7 @@ export const LandingPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fadeAnimationRef = useRef<number | null>(null);
+  const hasSeekedToStartRef = useRef(false);
 
   // Smooth audio volume fade using requestAnimationFrame
   const fadeVolume = useCallback((targetVolume: number, duration = 700, onComplete?: () => void) => {
@@ -119,14 +120,13 @@ export const LandingPage: React.FC = () => {
     }
   };
 
-  // Page mount: reliably start video, and attempt sound on by default
+  // Page mount: reliably start video with explicit DOM muted property, and attempt sound on by default
   useEffect(() => {
     const vid = videoRef.current;
     if (vid) {
+      vid.defaultMuted = true;
+      vid.muted = true;
       try {
-        if (vid.readyState >= 1 && vid.currentTime < START_TIME) {
-          vid.currentTime = START_TIME;
-        }
         vid.play().catch(() => {});
       } catch {}
     }
@@ -150,10 +150,13 @@ export const LandingPage: React.FC = () => {
 
   const handleVideoLoadedMetadata = () => {
     const vid = videoRef.current;
-    if (vid) {
-      if (vid.currentTime < START_TIME) {
-        vid.currentTime = START_TIME;
-      }
+    if (vid && !hasSeekedToStartRef.current) {
+      hasSeekedToStartRef.current = true;
+      try {
+        if (vid.currentTime < START_TIME) {
+          vid.currentTime = START_TIME;
+        }
+      } catch {}
       vid.play().catch(() => {});
     }
   };
@@ -163,17 +166,10 @@ export const LandingPage: React.FC = () => {
     const aud = audioRef.current;
     if (!vid) return;
 
-    // Never play before START_TIME (5.0s)
-    try {
-      if (vid.currentTime < START_TIME) {
-        vid.currentTime = START_TIME;
-      }
-    } catch {}
-
     // Keep audio in exact parallel lockstep with video when active
     if (aud && isSoundOn && !aud.paused) {
       try {
-        if (aud.readyState >= 1 && Math.abs(aud.currentTime - vid.currentTime) > 0.08) {
+        if (aud.readyState >= 1 && Math.abs(aud.currentTime - vid.currentTime) > 0.15) {
           aud.currentTime = vid.currentTime;
         }
       } catch {}
@@ -241,13 +237,23 @@ export const LandingPage: React.FC = () => {
         isTransitioning ? "opacity-0 scale-105 pointer-events-none" : "opacity-100 scale-100"
       }`}
     >
-      {/* Background Video (Autoplays muted immediately from 5s onwards, 100% compliant) */}
+      {/* Instant Backdrop to guarantee zero blank flash while 125MB video buffers */}
+      <img
+        src={getAssetUrl("/assets/photos/Ferrari Laferrari.jpg")}
+        alt="Ferrari Hero"
+        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none opacity-60"
+      />
+
+      {/* Background Video (Autoplays muted reliably, direct src resolution) */}
       <video
         ref={videoRef}
+        src={getAssetUrl("/assets/videos/landing.webm")}
         autoPlay
         muted
+        loop
         playsInline
         preload="auto"
+        poster={getAssetUrl("/assets/photos/Ferrari Laferrari.jpg")}
         disablePictureInPicture
         controlsList="nodownload nofullscreen noremoteplayback nopictureinpicture"
         onContextMenu={(e) => e.preventDefault()}
@@ -256,17 +262,14 @@ export const LandingPage: React.FC = () => {
         onSeeking={handleVideoSeeking}
         onEnded={handleVideoEnded}
         className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
-      >
-        <source src={getAssetUrl("/assets/videos/landing.webm#t=5")} type="video/webm" />
-        <source src={getAssetUrl("/assets/videos/landing.mp4#t=5")} type="video/mp4" />
-      </video>
+      />
 
       {/* Soundtrack Audio (Fades in smoothly upon SOUND ON or click) */}
       <audio
         ref={audioRef}
         playsInline
         preload="auto"
-        src={getAssetUrl("/assets/audio/landing.m4a#t=5")}
+        src={getAssetUrl("/assets/audio/landing.m4a")}
       />
 
       {/* Neutral Clean Cinematic Vignette */}
