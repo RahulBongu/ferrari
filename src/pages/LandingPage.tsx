@@ -298,9 +298,6 @@ export const LandingPage: React.FC = () => {
 
       {/* Minimalist Cinematic UI Placed at Bottom-Left */}
       <div className="relative z-10 flex flex-col items-start text-left p-8 sm:p-12 md:p-16 lg:p-20 max-w-4xl">
-        {/* Minimal Maranello Monogram Bar */}
-        <div className="w-12 h-[3px] bg-[#d40000] mb-4 tracking-widest opacity-90" />
-
         {/* Brand Title with subtle red shade highlighting only the word FERRARI */}
         <div className="relative inline-block my-1">
           {/* Focused red glow aura directly hugging the letters of FERRARI */}

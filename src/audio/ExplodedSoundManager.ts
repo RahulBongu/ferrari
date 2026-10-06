@@ -5,20 +5,19 @@
  * Audio Asset:
  * public/assets/audio/uploaded_scroll_sound.mp3 (exact uploaded audio file)
  *
- * Core Audio Behavior:
- * 1. STRICT ACTIVE SCROLL SYNCHRONIZATION:
- *    - Sound is active ONLY during physical scrolling (mouse wheel, trackpad, touch drag).
- *    - Instant 20–30ms fade-in when scrolling begins.
- *    - Continuous uninterrupted looping while scrolling is sustained.
- *    - Volume smoothly scales with scroll velocity (quiet on slow, crisp and full on fast).
- * 2. ABSOLUTE SILENCE ON STOP:
- *    - When scrolling ceases (no scroll delta for 50–80ms), volume immediately ramps to zero
- *      and the audio node is completely stopped and disconnected.
- *    - ZERO background idling, zero lingering noise, zero mouse-hover or animation-loop triggers.
- * 3. Mastering & Presence:
- *    - Crisp presence peaking EQ (+3.5 dB at 3.4 kHz) brings out tactile mouse detents.
- *    - Transparent dynamics compressor for rich body and anti-clipping protection.
- *    - Clean post-compressor makeup gain (+3.2 dB) ensuring clarity on laptop speakers and headphones.
+ * Maximum Audibility & Tactile Clarity:
+ * 1. High Volume & Punchy Headroom:
+ *    - Significantly boosted volume (+7.6 dB makeup gain, 2.4x) for clear audibility on laptop speakers.
+ *    - Dual-stage acoustic EQ:
+ *      * Body Peaking Filter (+3.0 dB at 250 Hz) for mechanical weight and tactile fullness.
+ *      * Crisp Presence Peaking Filter (+5.5 dB at 3.4 kHz) so mouse-wheel detents cut through cleanly.
+ *    - Mastering Peak Limiter (DynamicsCompressorNode at master stage) prevents any digital clipping.
+ * 2. Active Scroll Reactive Volume:
+ *    - Slow scrolling: 45–55% (clearly audible and strong even with gentle movement).
+ *    - Normal scrolling: 70–85% (punchy, satisfying tactile clicks).
+ *    - Fast / flick scrolling: 90–100% (full mechanical energy).
+ * 3. Immediate Silence on Stop:
+ *    - 20ms micro-ramp to zero and hard stop of source node. Zero background idling.
  */
 
 import { getAssetUrl } from "../utils/assetUrl";
@@ -29,9 +28,10 @@ export class FerrariScrollSound {
 
   // Signal chain nodes
   private gainNode: GainNode | null = null;
+  private bodyFilter: BiquadFilterNode | null = null;
   private presenceFilter: BiquadFilterNode | null = null;
-  private compressor: DynamicsCompressorNode | null = null;
   private makeupGain: GainNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private masterGain: GainNode | null = null;
   private sourceNode: AudioBufferSourceNode | null = null;
 
@@ -50,7 +50,7 @@ export class FerrariScrollSound {
   }
 
   /**
-   * Initializes AudioContext, mastering chain, and attaches global interaction unlock handlers.
+   * Initializes AudioContext, high-output mastering chain, and interaction unlock handlers.
    */
   public init(): void {
     if (this.ctx || typeof window === "undefined") return;
@@ -67,34 +67,42 @@ export class FerrariScrollSound {
       this.gainNode = this.ctx.createGain();
       this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
 
-      // 2. Crisp Presence EQ: brings out mechanical detent clicks (+3.5dB at 3.4kHz)
+      // 2. Body Peaking Filter: adds mechanical substance and tactile weight (+3.0dB at 250Hz)
+      this.bodyFilter = this.ctx.createBiquadFilter();
+      this.bodyFilter.type = "peaking";
+      this.bodyFilter.frequency.setValueAtTime(250, this.ctx.currentTime);
+      this.bodyFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
+      this.bodyFilter.gain.setValueAtTime(3.0, this.ctx.currentTime);
+
+      // 3. Crisp Presence EQ: brings out mechanical detent clicks with high definition (+5.5dB at 3.4kHz)
       this.presenceFilter = this.ctx.createBiquadFilter();
       this.presenceFilter.type = "peaking";
       this.presenceFilter.frequency.setValueAtTime(3400, this.ctx.currentTime);
-      this.presenceFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
-      this.presenceFilter.gain.setValueAtTime(3.5, this.ctx.currentTime);
+      this.presenceFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+      this.presenceFilter.gain.setValueAtTime(5.5, this.ctx.currentTime);
 
-      // 3. Transparent Dynamics Compressor: prevents digital clipping and adds body
-      this.compressor = this.ctx.createDynamicsCompressor();
-      this.compressor.threshold.setValueAtTime(-16, this.ctx.currentTime);
-      this.compressor.knee.setValueAtTime(12, this.ctx.currentTime);
-      this.compressor.ratio.setValueAtTime(3.0, this.ctx.currentTime);
-      this.compressor.attack.setValueAtTime(0.005, this.ctx.currentTime);
-      this.compressor.release.setValueAtTime(0.08, this.ctx.currentTime);
-
-      // 4. Clean makeup booster gain (1.45x / +3.2dB)
+      // 4. Clean makeup booster gain (2.4x / +7.6dB) for bold audibility
       this.makeupGain = this.ctx.createGain();
-      this.makeupGain.gain.setValueAtTime(1.45, this.ctx.currentTime);
+      this.makeupGain.gain.setValueAtTime(2.4, this.ctx.currentTime);
 
-      // 5. Master gain for user mute / unmute toggle
+      // 5. Mastering Dynamics Limiter: controls transients, increases RMS presence, prevents clipping
+      this.compressor = this.ctx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-10, this.ctx.currentTime);
+      this.compressor.knee.setValueAtTime(6, this.ctx.currentTime);
+      this.compressor.ratio.setValueAtTime(8.0, this.ctx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+      this.compressor.release.setValueAtTime(0.06, this.ctx.currentTime);
+
+      // 6. Master gain for user mute / unmute toggle
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1.0, this.ctx.currentTime);
 
-      // Audio Graph: source -> gainNode -> presenceFilter -> compressor -> makeupGain -> masterGain -> destination
-      this.gainNode.connect(this.presenceFilter);
-      this.presenceFilter.connect(this.compressor);
-      this.compressor.connect(this.makeupGain);
-      this.makeupGain.connect(this.masterGain);
+      // Audio Graph: source -> gainNode -> bodyFilter -> presenceFilter -> makeupGain -> compressor -> masterGain -> destination
+      this.gainNode.connect(this.bodyFilter);
+      this.bodyFilter.connect(this.presenceFilter);
+      this.presenceFilter.connect(this.makeupGain);
+      this.makeupGain.connect(this.compressor);
+      this.compressor.connect(this.masterGain);
       this.masterGain.connect(this.ctx.destination);
 
       this.preloadAudio();
@@ -235,17 +243,16 @@ export class FerrariScrollSound {
 
     const t = this.ctx.currentTime;
     const norm = Math.min(1.0, Math.max(0, normalizedVelocity));
-    const curve = Math.pow(norm, 0.60);
+    const curve = Math.pow(norm, 0.45); // Responsive curve for immediate audibility
 
     /**
-     * Volume targets strictly matching specifications:
-     * - Slow: 20–30% (0.24–0.30)
-     * - Normal: 40–55% (0.42–0.50)
-     * - Fast: 55–70% (0.60–0.68)
-     * - Very fast: 70–80% (0.75–0.80)
+     * Enhanced High-Audibility Targets:
+     * - Slow: 45–55% (immediately clear and noticeable)
+     * - Normal: 70–85% (punchy, crisp detent clicks)
+     * - Fast / Flick: 90–100% (maximum mechanical presence)
      */
-    const targetVol = 0.24 + curve * (0.78 - 0.24);
-    const targetRate = 0.96 + curve * 0.14;
+    const targetVol = 0.45 + curve * (1.0 - 0.45);
+    const targetRate = 0.97 + curve * 0.12;
 
     if (!this.isPlaying || !this.sourceNode) {
       this.startLoop(targetVol);
@@ -299,7 +306,7 @@ export class FerrariScrollSound {
    */
   public update(velocity: number, direction: number = 1, _progress: number = 0): void {
     if (velocity > 0.003) {
-      const norm = Math.min(1.0, Math.max(0, (velocity - 0.003) / 0.40));
+      const norm = Math.min(1.0, Math.max(0, (velocity - 0.003) / 0.30));
       this.onScroll(norm, direction);
     } else {
       this.onScrollStop();

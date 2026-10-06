@@ -167,9 +167,9 @@ export const ExplodedViewSection: React.FC = () => {
 
       if (deltaScrolled > 0.5) {
         // Active scroll movement detected!
-        // Velocity in px/ms: typically 0.3 (slow) to 6.0+ (fast)
+        // Velocity in px/ms: typically 0.3 (slow) to 4.0+ (fast)
         const pxPerMs = deltaScrolled / dt;
-        const normalizedVelocity = Math.min(1.0, pxPerMs / 5.0);
+        const normalizedVelocity = Math.min(1.0, pxPerMs / 3.0);
 
         if (isSoundActive) {
           soundManager.onScroll(normalizedVelocity, direction);
