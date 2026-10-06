@@ -245,36 +245,29 @@ export const ExplodedViewSection: React.FC = () => {
               <h2 className="font-display font-black text-3xl sm:text-5xl uppercase tracking-wider text-[#d40000] drop-shadow-[0_0_30px_rgba(212,0,0,0.5)]">
                 FERRARI LAFERRARI
               </h2>
-              {currentFrameIndex < 35 && (
-                <button
-                  onClick={() => {
-                    window.scrollBy({ top: window.innerHeight * 0.9, behavior: "smooth" });
-                  }}
-                  className="group relative flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000] shadow-[0_0_15px_rgba(212,0,0,0.55),inset_0_0_10px_rgba(212,0,0,0.2)] hover:shadow-[0_0_25px_rgba(212,0,0,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer pointer-events-auto"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
-                  <span className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.2em] uppercase font-bold text-white !text-white drop-shadow-sm">
-                    SCROLL DOWN
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
-                </button>
-              )}
             </div>
-            <p className="font-mono-tech text-[11px] tracking-widest !text-black font-extrabold uppercase mt-1">
+            <p
+              style={{ color: "rgba(255, 255, 255, 0.75)" }}
+              className="font-mono-tech text-[11px] tracking-widest uppercase font-bold mt-1 !text-white/80"
+            >
               SCROLL DOWN TO EXPLODE &middot; SCROLL UP TO REASSEMBLE
             </p>
           </div>
 
-          {/* Minimalist Premium Audio Toggle Button */}
+          {/* Minimalist Premium Audio Toggle Button - guaranteed white in both light and dark modes */}
           <button
             onClick={toggleSound}
             aria-label={isSoundActive ? "Mute interactive engineering audio" : "Enable interactive engineering audio"}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-white/20 hover:border-[#d40000] shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_20px_rgba(212,0,0,0.4)] transition-all cursor-pointer pointer-events-auto group text-white/80 hover:text-white shrink-0 self-start sm:self-auto"
+            style={{ color: "#ffffff" }}
+            className="always-white flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-white/25 hover:border-[#d40000] shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_20px_rgba(212,0,0,0.4)] transition-all cursor-pointer pointer-events-auto group !text-white shrink-0 self-start sm:self-auto"
           >
             {isSoundActive ? (
               <>
                 <Volume2 className="w-3.5 h-3.5 text-[#d40000]" />
-                <span className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold text-white">
+                <span
+                  style={{ color: "#ffffff" }}
+                  className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
+                >
                   SOUND ON
                 </span>
                 <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
@@ -285,8 +278,11 @@ export const ExplodedViewSection: React.FC = () => {
               </>
             ) : (
               <>
-                <VolumeX className="w-3.5 h-3.5 text-white/40" />
-                <span className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold text-white/50">
+                <VolumeX className="w-3.5 h-3.5 !text-white" style={{ color: "#ffffff" }} />
+                <span
+                  style={{ color: "#ffffff" }}
+                  className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
+                >
                   SOUND OFF
                 </span>
               </>
@@ -317,6 +313,22 @@ export const ExplodedViewSection: React.FC = () => {
             <span className="font-mono-tech text-[11px] text-white/60 mt-2 block tracking-wider">
               {loadedCount} / {TOTAL_FRAMES} FRAMES ({Math.round((loadedCount / TOTAL_FRAMES) * 100)}%)
             </span>
+          </div>
+        )}
+
+        {/* Centered Unclickable Scroll Down Indicator below the car */}
+        {currentFrameIndex < 35 && (
+          <div className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none select-none z-20 transition-opacity duration-300">
+            <div className="always-white flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000]/70 shadow-[0_0_20px_rgba(212,0,0,0.45)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
+              <span
+                style={{ color: "#ffffff" }}
+                className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.25em] uppercase font-bold !text-white drop-shadow-sm"
+              >
+                SCROLL DOWN
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
+            </div>
           </div>
         )}
 
