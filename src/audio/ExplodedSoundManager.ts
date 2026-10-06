@@ -4,20 +4,20 @@
  *
  * Architecture:
  * SoundManager
- * ├── ambience           (Subtle 5–10% low-frequency mechanical presence)
- * ├── componentWhoosh    (Small component 15–25% aerodynamic air sweep)
- * ├── mechanicalClick    (Precision 25–40% titanium/metallic lock & latch)
- * ├── heavyPanelMove     (Large component 20–35% deep structural mass movement)
- * ├── engineReveal       (Impressive 35–50% restrained V12 mechanical rumble & resonance)
- * └── finalSettle        (Authoritative 50–60% staggered micro-locks & sub-bass tail)
+ * ├── ambience           (Low-frequency mechanical presence with deep sub-bass body)
+ * ├── componentWhoosh    (Small component aerodynamic air sweep & low displacement)
+ * ├── mechanicalClick    (Precision titanium/metallic lock & latch)
+ * ├── heavyPanelMove     (Large component deep structural mass movement & carbon friction)
+ * ├── engineReveal       (Authoritative 6.3L V12 mechanical rumble & metallic resonance)
+ * └── finalSettle        (Authoritative staggered micro-locks & cinematic sub-bass tail)
  *
  * Engineering Features:
+ * - Master Bus: Dedicated +5.5dB Low-Shelf Bass Boost & Studio Dynamics Compressor
  * - Velocity-mapped continuous air whoosh & micro-servo pitch modulation (no audio spam)
- * - Anti-spam hysteresis window & 140ms cooldown gating
+ * - Anti-spam hysteresis window & 130ms cooldown gating
  * - Bidirectional milestone response (forward explosion & reverse reassembly docking)
- * - Browser autoplay unlocking across desktop, tablet, and mobile
+ * - Auto-initialization and instant unlock on first scroll, touch, or click
  * - Session-persisted sound toggle (SOUND ON / SOUND OFF)
- * - Single reusable AudioContext with procedural synthesis + preloaded sample buffer
  */
 
 import { getAssetUrl } from "../utils/assetUrl";
@@ -25,9 +25,11 @@ import { getAssetUrl } from "../utils/assetUrl";
 export class SoundManager {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private bassFilter: BiquadFilterNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private isMuted: boolean = false;
 
-  // Global Ambience Layer (5–10% level)
+  // Global Ambience Layer
   private ambienceOsc1: OscillatorNode | null = null;
   private ambienceOsc2: OscillatorNode | null = null;
   private ambienceFilter: BiquadFilterNode | null = null;
@@ -43,7 +45,7 @@ export class SoundManager {
   private servoOsc: OscillatorNode | null = null;
   private servoGain: GainNode | null = null;
 
-  // Engine Reveal Layer (35–50% level: 6.3L naturally aspirated V12 & HY-KERS)
+  // Engine Reveal Layer (6.3L naturally aspirated V12 & HY-KERS)
   private engineOsc1: OscillatorNode | null = null;
   private engineOsc2: OscillatorNode | null = null;
   private engineResonanceFilter: BiquadFilterNode | null = null;
@@ -83,9 +85,28 @@ export class SoundManager {
       if (!AudioContextClass) return;
 
       this.ctx = new AudioContextClass();
+
+      // Master Gain Node
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1.3, this.ctx.currentTime);
+
+      // Dedicated Analog Bass Boost Shelf (+5.5dB at 115Hz for deep, punchy automotive weight)
+      this.bassFilter = this.ctx.createBiquadFilter();
+      this.bassFilter.type = "lowshelf";
+      this.bassFilter.frequency.value = 115;
+      this.bassFilter.gain.value = 5.5;
+
+      // Studio Dynamics Compressor (prevents clipping, thickens bass, maximizes cinematic punch)
+      this.compressor = this.ctx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+      this.compressor.knee.setValueAtTime(10, this.ctx.currentTime);
+      this.compressor.ratio.setValueAtTime(4.5, this.ctx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+
+      this.masterGain.connect(this.bassFilter);
+      this.bassFilter.connect(this.compressor);
+      this.compressor.connect(this.ctx.destination);
 
       this.createNoiseBuffer();
       this.preloadSampleBuffer();
@@ -141,13 +162,13 @@ export class SoundManager {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("ferrari_sound_enabled", enabled ? "true" : "false");
     }
+    if (enabled) {
+      this.ensureUnlocked();
+    }
     if (this.ctx && this.masterGain) {
       const t = this.ctx.currentTime;
       this.masterGain.gain.cancelScheduledValues(t);
-      this.masterGain.gain.setTargetAtTime(enabled ? 1.0 : 0.0, t, 0.04);
-    }
-    if (enabled) {
-      this.ensureUnlocked();
+      this.masterGain.gain.setTargetAtTime(enabled ? 1.3 : 0.0, t, 0.04);
     }
   }
 
@@ -202,8 +223,8 @@ export class SoundManager {
 
   /**
    * 1. GLOBAL AMBIENCE
-   * Extremely subtle low-frequency mechanical ambience (5–10% level).
-   * 48Hz sine + 96Hz subtle triangle filtered at 105Hz lowpass.
+   * Low-frequency mechanical ambience with deep sub-bass body.
+   * 44Hz sine + 88Hz triangle filtered through a 115Hz lowpass filter.
    */
   private setupGlobalAmbience(): void {
     if (!this.ctx || !this.masterGain) return;
@@ -214,14 +235,14 @@ export class SoundManager {
     const gain = this.ctx.createGain();
 
     osc1.type = "sine";
-    osc1.frequency.value = 48;
+    osc1.frequency.value = 44; // Deep sub-bass mechanical hum
 
     osc2.type = "triangle";
-    osc2.frequency.value = 96;
+    osc2.frequency.value = 88; // 1st harmonic
 
     filter.type = "lowpass";
-    filter.frequency.value = 105;
-    filter.Q.value = 1.1;
+    filter.frequency.value = 115;
+    filter.Q.value = 1.3;
 
     gain.gain.setValueAtTime(0, this.ctx.currentTime);
 
@@ -255,9 +276,9 @@ export class SoundManager {
     if (!this.ctx || !this.ambienceGain || this.isAmbienceActive || this.isMuted) return;
     const t = this.ctx.currentTime;
     this.ambienceGain.gain.cancelScheduledValues(t);
-    // Sophisticated 6.5% level (5–10% recommended): technical acoustic presence
-    this.ambienceGain.gain.setTargetAtTime(0.065, t, 0.6);
-    this.ambienceFilter?.frequency.setTargetAtTime(105, t, 0.5);
+    // Elevated 16% level with thick bass body: technical automotive presence
+    this.ambienceGain.gain.setTargetAtTime(0.16, t, 0.5);
+    this.ambienceFilter?.frequency.setTargetAtTime(115, t, 0.5);
     this.isAmbienceActive = true;
   }
 
@@ -282,7 +303,7 @@ export class SoundManager {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "bandpass";
-    filter.frequency.value = 320;
+    filter.frequency.value = 240;
     filter.Q.value = 2.0;
 
     const gain = this.ctx.createGain();
@@ -292,7 +313,7 @@ export class SoundManager {
     const servo = this.ctx.createOscillator();
     const servoG = this.ctx.createGain();
     servo.type = "triangle";
-    servo.frequency.value = 200;
+    servo.frequency.value = 190;
     servoG.gain.setValueAtTime(0, this.ctx.currentTime);
 
     noiseSource.connect(filter);
@@ -314,8 +335,8 @@ export class SoundManager {
 
   /**
    * 5. ENGINE REVEAL LAYER
-   * Impressive low-frequency mechanical rumble (35–50% level).
-   * Naturally aspirated 6.3L V12 firing texture + metallic valvetrain acoustic resonance.
+   * Authoritative mechanical V12 rumble (elevated bass & level).
+   * Naturally aspirated 6.3L V12 firing pulse + metallic valvetrain acoustic resonance.
    */
   private setupEngineLayer(): void {
     if (!this.ctx || !this.masterGain) return;
@@ -327,20 +348,20 @@ export class SoundManager {
     const gain = this.ctx.createGain();
 
     osc1.type = "sawtooth";
-    osc1.frequency.value = 42; // Low mechanical V12 pulse
+    osc1.frequency.value = 40; // Deep low-frequency mechanical V12 pulse
 
     osc2.type = "triangle";
-    osc2.frequency.value = 84; // 1st harmonic
+    osc2.frequency.value = 80; // 1st harmonic
 
-    // Warm acoustic engine housing filter
+    // Warm acoustic engine housing filter with bass reinforcement
     lowpass.type = "lowpass";
-    lowpass.frequency.value = 160;
-    lowpass.Q.value = 2.4;
+    lowpass.frequency.value = 180;
+    lowpass.Q.value = 2.6;
 
     // Metallic valvetrain / machined aluminum block resonance
     resonance.type = "peaking";
     resonance.frequency.value = 420;
-    resonance.gain.value = 5.0;
+    resonance.gain.value = 6.0;
     resonance.Q.value = 3.5;
 
     gain.gain.setValueAtTime(0, this.ctx.currentTime);
@@ -380,11 +401,11 @@ export class SoundManager {
     // 1. Modulate continuous motion whoosh & servo sweep (no audio spam)
     if (this.motionGain && this.motionFilter && this.servoGain && this.servoOsc) {
       if (velNormalized > 0.02) {
-        // Active motion: scale volume between 0 and 0.22 (15-22% level)
-        const targetVol = Math.min(0.22, velNormalized * 0.26);
+        // Active motion: scaled volume up to 0.45 with rich bass weight
+        const targetVol = Math.min(0.45, velNormalized * 0.52);
         // Pitch ramps smoothly with velocity (slow = lower pitch, fast = higher pitch)
-        const targetFreq = 240 + velNormalized * 720; // 240Hz to 960Hz
-        const targetQ = 1.5 + velNormalized * 1.8;
+        const targetFreq = 200 + velNormalized * 650; // 200Hz to 850Hz
+        const targetQ = 1.6 + velNormalized * 1.8;
 
         this.motionGain.gain.cancelScheduledValues(t);
         this.motionGain.gain.setTargetAtTime(targetVol, t, 0.05);
@@ -397,8 +418,8 @@ export class SoundManager {
 
         // Subtle micro-servo pitch modulation
         this.servoGain.gain.cancelScheduledValues(t);
-        this.servoGain.gain.setTargetAtTime(velNormalized * 0.032, t, 0.05);
-        this.servoOsc.frequency.setTargetAtTime(170 + velNormalized * 190, t, 0.06);
+        this.servoGain.gain.setTargetAtTime(velNormalized * 0.075, t, 0.05);
+        this.servoOsc.frequency.setTargetAtTime(160 + velNormalized * 180, t, 0.06);
       } else {
         // Standstill: gently decay motion layer
         this.motionGain.gain.setTargetAtTime(0, t, 0.12);
@@ -417,7 +438,7 @@ export class SoundManager {
 
   /**
    * 5. ENGINE REVEAL
-   * Controlled mechanical V12 idle and metallic acoustic rumble (35–50% level).
+   * Controlled mechanical V12 idle and metallic acoustic rumble (elevated bass & level).
    */
   public engineReveal(progressOrIntensity: number = 0.72, velocity: number = 0.2): void {
     if (!this.ctx || !this.engineGain || !this.engineLowpassFilter || !this.engineOsc1) return;
@@ -431,9 +452,9 @@ export class SoundManager {
       const dist = Math.abs(progress - center);
       const intensity = Math.max(0, 1 - dist / 0.15);
 
-      // Level: 35–45% restrained luxury automotive mechanical rumble
-      const engineLevel = intensity * (0.28 + velocity * 0.14);
-      const cutoff = 130 + intensity * 230; // 130Hz to 360Hz
+      // Elevated level: up to 0.75 rich, deep mechanical V12 rumble
+      const engineLevel = intensity * (0.50 + velocity * 0.25);
+      const cutoff = 150 + intensity * 260; // 150Hz to 410Hz
 
       this.engineGain.gain.cancelScheduledValues(t);
       this.engineGain.gain.setTargetAtTime(engineLevel, t, 0.08);
@@ -441,10 +462,10 @@ export class SoundManager {
       this.engineLowpassFilter.frequency.cancelScheduledValues(t);
       this.engineLowpassFilter.frequency.setTargetAtTime(cutoff, t, 0.08);
 
-      this.engineResonanceFilter?.gain.setTargetAtTime(3.0 + intensity * 4.0, t, 0.08);
+      this.engineResonanceFilter?.gain.setTargetAtTime(4.0 + intensity * 6.0, t, 0.08);
 
       // Subtle mechanical RPM resonance fluctuation matching motion
-      this.engineOsc1.frequency.setTargetAtTime(42 + velocity * 14, t, 0.08);
+      this.engineOsc1.frequency.setTargetAtTime(40 + velocity * 16, t, 0.08);
       this.isEngineActive = true;
     } else if (this.isEngineActive) {
       this.engineGain.gain.setTargetAtTime(0, t, 0.24);
@@ -543,7 +564,7 @@ export class SoundManager {
 
   /**
    * 2. COMPONENT WHOOSH (Small Components: vents, ducts, trim, suspension)
-   * Light aerodynamic whoosh + titanium presence (Level: 15–25%).
+   * Light aerodynamic whoosh + low air displacement body.
    */
   public componentWhoosh(velocity: number = 0.2): void {
     this.ensureUnlocked();
@@ -556,7 +577,7 @@ export class SoundManager {
         const sampleSource = this.ctx.createBufferSource();
         const sampleGain = this.ctx.createGain();
         sampleSource.buffer = this.preloadedSampleBuffer;
-        sampleGain.gain.setValueAtTime(0.08, t);
+        sampleGain.gain.setValueAtTime(0.12, t);
         sampleGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
         sampleSource.connect(sampleGain);
         sampleGain.connect(this.masterGain);
@@ -569,14 +590,14 @@ export class SoundManager {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "bandpass";
-    filter.frequency.setValueAtTime(420, t);
-    filter.frequency.exponentialRampToValueAtTime(780, t + 0.12);
-    filter.frequency.exponentialRampToValueAtTime(320, t + 0.22);
-    filter.Q.value = 2.8;
+    filter.frequency.setValueAtTime(380, t);
+    filter.frequency.exponentialRampToValueAtTime(740, t + 0.12);
+    filter.frequency.exponentialRampToValueAtTime(260, t + 0.22);
+    filter.Q.value = 2.6;
 
     const gain = this.ctx.createGain();
-    // Level: 18-22% (within 15–25% specification)
-    const targetGain = Math.min(0.24, 0.15 + velocity * 0.09);
+    // Elevated target gain: up to 0.42
+    const targetGain = Math.min(0.42, 0.28 + velocity * 0.16);
     gain.gain.setValueAtTime(0.001, t);
     gain.gain.exponentialRampToValueAtTime(targetGain, t + 0.08);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
@@ -596,7 +617,7 @@ export class SoundManager {
 
   /**
    * 4. HEAVY PANEL MOVE (Large Components: hood, doors, wheels, body panels, engine cover)
-   * Deeper displacement + carbon-fiber mass friction (Level: 20–35%).
+   * Deep displacement + heavy carbon-fiber mass resonance.
    */
   public heavyPanelMove(velocity: number = 0.2): void {
     this.ensureUnlocked();
@@ -608,14 +629,14 @@ export class SoundManager {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(180, t);
-    filter.frequency.exponentialRampToValueAtTime(360, t + 0.14);
-    filter.frequency.exponentialRampToValueAtTime(140, t + 0.32);
-    filter.Q.value = 1.9;
+    filter.frequency.setValueAtTime(160, t);
+    filter.frequency.exponentialRampToValueAtTime(320, t + 0.14);
+    filter.frequency.exponentialRampToValueAtTime(110, t + 0.32);
+    filter.Q.value = 2.2;
 
     const gain = this.ctx.createGain();
-    // Level: 24–30% (within 20–35% specification)
-    const targetGain = Math.min(0.32, 0.21 + velocity * 0.13);
+    // Elevated target gain: up to 0.58 with thick low-end body
+    const targetGain = Math.min(0.58, 0.38 + velocity * 0.22);
     gain.gain.setValueAtTime(0.001, t);
     gain.gain.exponentialRampToValueAtTime(targetGain, t + 0.10);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
@@ -635,8 +656,8 @@ export class SoundManager {
 
   /**
    * 2 & 4. MECHANICAL CLICK / LOCK
-   * Precision metallic latch click: ultra-short transient + resonant ring (Level: 25–40%).
-   * Models high-tolerance automotive assembly, strictly avoids arcade beeps.
+   * Precision metallic latch click: ultra-short transient + resonant ring.
+   * Models high-tolerance automotive assembly with punchy mechanical snap.
    */
   public mechanicalClick(type: "light" | "heavy" = "light"): void {
     this.ensureUnlocked();
@@ -648,16 +669,16 @@ export class SoundManager {
     const filter = this.ctx.createBiquadFilter();
 
     osc.type = "sine";
-    const freq = type === "light" ? 1750 : 920;
+    const freq = type === "light" ? 1750 : 880;
     osc.frequency.setValueAtTime(freq, t);
     osc.frequency.exponentialRampToValueAtTime(freq * 0.65, t + 0.045);
 
     filter.type = "bandpass";
     filter.frequency.value = freq;
-    filter.Q.value = type === "light" ? 11 : 7.5;
+    filter.Q.value = type === "light" ? 10 : 7.0;
 
-    // Level: 26–34% (within 25–40% specification)
-    const clickGain = type === "light" ? 0.27 : 0.34;
+    // Elevated click gain: light 0.45, heavy 0.58
+    const clickGain = type === "light" ? 0.45 : 0.58;
     gain.gain.setValueAtTime(clickGain, t);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + (type === "light" ? 0.045 : 0.075));
 
@@ -686,28 +707,28 @@ export class SoundManager {
     const gain = this.ctx.createGain();
 
     osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(54, t);
-    osc.frequency.exponentialRampToValueAtTime(38, t + 0.34);
+    osc.frequency.setValueAtTime(50, t);
+    osc.frequency.exponentialRampToValueAtTime(34, t + 0.35);
 
     filter.type = "lowpass";
-    filter.frequency.value = 200;
-    filter.Q.value = 2.8;
+    filter.frequency.value = 180;
+    filter.Q.value = 3.0;
 
     gain.gain.setValueAtTime(0.001, t);
-    gain.gain.exponentialRampToValueAtTime(0.38, t + 0.08); // 38% level
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.44);
+    gain.gain.exponentialRampToValueAtTime(0.60, t + 0.08); // 60% punchy level
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
 
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(this.masterGain);
 
     osc.start(t);
-    osc.stop(t + 0.45);
+    osc.stop(t + 0.46);
   }
 
   /**
    * 6. FINAL EXPLODED VIEW SETTLE
-   * Staggered precision micro-locks + cinematic sub-bass tail (Level: maximum 50–60%).
+   * Staggered precision micro-locks + deep cinematic sub-bass tail.
    */
   public finalSettle(): void {
     this.ensureUnlocked();
@@ -718,30 +739,30 @@ export class SoundManager {
     setTimeout(() => this.mechanicalClick("light"), 90);
     setTimeout(() => this.mechanicalClick("light"), 170);
 
-    // Subtle cinematic sub-bass tail (60Hz sinking to 26Hz over 0.65s)
+    // Deep cinematic sub-bass tail (68Hz sinking to 22Hz over 0.75s)
     const t = this.ctx.currentTime + 0.05;
     const subOsc = this.ctx.createOscillator();
     const subFilter = this.ctx.createBiquadFilter();
     const subGain = this.ctx.createGain();
 
     subOsc.type = "sine";
-    subOsc.frequency.setValueAtTime(60, t);
-    subOsc.frequency.exponentialRampToValueAtTime(26, t + 0.65);
+    subOsc.frequency.setValueAtTime(68, t);
+    subOsc.frequency.exponentialRampToValueAtTime(22, t + 0.75);
 
     subFilter.type = "lowpass";
-    subFilter.frequency.value = 85;
+    subFilter.frequency.value = 95;
 
-    // Level: 49% (within 50–60% maximum level)
+    // Elevated level: 72% deep, authoritative cinematic sub-bass tail
     subGain.gain.setValueAtTime(0.001, t);
-    subGain.gain.exponentialRampToValueAtTime(0.49, t + 0.12);
-    subGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.70);
+    subGain.gain.exponentialRampToValueAtTime(0.72, t + 0.12);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.80);
 
     subOsc.connect(subFilter);
     subFilter.connect(subGain);
     subGain.connect(this.masterGain);
 
     subOsc.start(t);
-    subOsc.stop(t + 0.72);
+    subOsc.stop(t + 0.82);
   }
 
   // Alias for backward compatibility
