@@ -19,6 +19,9 @@ export const ExplodedViewSection: React.FC = () => {
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
   const animationFrameIdRef = useRef<number | null>(null);
+  const lastScrollTimeRef = useRef(0);
+  const lastScrolledPosRef = useRef(0);
+  const scrollStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Toggle interactive sound design
   const toggleSound = (e?: React.MouseEvent) => {
@@ -124,7 +127,7 @@ export const ExplodedViewSection: React.FC = () => {
     }
   }, [renderFrame]);
 
-  // Scroll listener to update timeline progress and handle audio zone
+  // Scroll listener to update timeline progress and handle active scroll audio
   useEffect(() => {
     const handleScroll = () => {
       if (!containerRef.current) return;
@@ -137,46 +140,71 @@ export const ExplodedViewSection: React.FC = () => {
       const progress = Math.max(0, Math.min(1, scrolled / totalScrollable));
       targetProgressRef.current = progress;
 
-      // Ensure audio engine is unlocked while within or adjacent to the exploded section
-      const isInsideExplodeSection = scrolled >= -80 && scrolled <= totalScrollable + 80;
-      if (isInsideExplodeSection) {
-        soundManager.ensureUnlocked();
-      } else {
-        soundManager.stop();
+      // Ensure audio engine is unlocked on user interaction
+      soundManager.ensureUnlocked();
+
+      // Only play sound if user is actively within the exploded section boundaries
+      const isInsideExplodeSection = scrolled > 0 && scrolled < totalScrollable;
+
+      if (!isInsideExplodeSection) {
+        // Outside exploded range or at boundaries: stop immediately
+        if (scrollStopTimerRef.current) {
+          clearTimeout(scrollStopTimerRef.current);
+          scrollStopTimerRef.current = null;
+        }
+        soundManager.onScrollStop();
+        return;
+      }
+
+      // Inside section: calculate active physical scroll movement
+      const now = performance.now();
+      const dt = Math.max(8, now - lastScrollTimeRef.current);
+      const deltaScrolled = Math.abs(scrolled - lastScrolledPosRef.current);
+      const direction = scrolled >= lastScrolledPosRef.current ? 1 : -1;
+
+      lastScrollTimeRef.current = now;
+      lastScrolledPosRef.current = scrolled;
+
+      if (deltaScrolled > 0.5) {
+        // Active scroll movement detected!
+        // Velocity in px/ms: typically 0.3 (slow) to 6.0+ (fast)
+        const pxPerMs = deltaScrolled / dt;
+        const normalizedVelocity = Math.min(1.0, pxPerMs / 5.0);
+
+        if (isSoundActive) {
+          soundManager.onScroll(normalizedVelocity, direction);
+        }
+
+        // Reset scroll stop timer: detect when scrolling stops (75ms with no scroll events)
+        if (scrollStopTimerRef.current) {
+          clearTimeout(scrollStopTimerRef.current);
+        }
+        scrollStopTimerRef.current = setTimeout(() => {
+          soundManager.onScrollStop();
+          scrollStopTimerRef.current = null;
+        }, 75);
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      soundManager.stop();
+      if (scrollStopTimerRef.current) {
+        clearTimeout(scrollStopTimerRef.current);
+        scrollStopTimerRef.current = null;
+      }
+      soundManager.onScrollStop();
     };
-  }, []);
+  }, [isSoundActive]);
 
-  // Animation loop with refined mechanical damping and velocity audio calculation
+  // Visual animation loop: smoothly interpolates frame rendering without driving sound
   useEffect(() => {
     let lastRenderedFrame = -1;
-    let lastProgressForVel = 0;
-    let lastTime = performance.now();
 
     const loop = () => {
-      // Slower, weighted mechanical damping (0.18) for tactile inertia without latency
+      // Mechanical damping (0.18) for tactile visual inertia
       currentProgressRef.current += (targetProgressRef.current - currentProgressRef.current) * 0.18;
-
-      const now = performance.now();
-      const dt = Math.max(1, now - lastTime);
-      const deltaProgress = currentProgressRef.current - lastProgressForVel;
-      const velocity = Math.abs(deltaProgress) / (dt / 1000);
-      const direction = deltaProgress >= 0 ? 1 : -1;
-      lastProgressForVel = currentProgressRef.current;
-      lastTime = now;
-
-      // Synchronize continuous mechanical scroll sound directly to velocity and direction
-      if (isSoundActive) {
-        soundManager.update(velocity, direction, currentProgressRef.current);
-      }
 
       const frameIdx = Math.max(
         0,
@@ -200,9 +228,8 @@ export const ExplodedViewSection: React.FC = () => {
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
-      soundManager.stop();
     };
-  }, [renderFrame, isSoundActive]);
+  }, [renderFrame]);
 
   // Dynamic engineering phase label
   const getPhaseLabel = (frame: number) => {

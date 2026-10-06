@@ -5,23 +5,20 @@
  * Audio Asset:
  * public/assets/audio/uploaded_scroll_sound.mp3 (exact uploaded audio file)
  *
- * Enhanced Audibility & Presence:
- * 1. Volume & Dynamics:
- *    - Increased overall perceived loudness (~2x) optimized for laptop speakers & headphones.
- *    - Transparent studio dynamics compressor (+ gentle soft knee) to lift micro-detail and eliminate clipping.
- *    - Velocity-reactive targets:
- *      * No scrolling: 0%
- *      * Slow: 20–30% (0.24–0.30)
- *      * Normal: 40–55% (0.42–0.50)
- *      * Fast: 55–70% (0.60–0.68)
- *      * Very fast: 70–80% (0.75–0.80)
- * 2. Crisp Presence:
- *    - Peaking EQ boost at 3.4 kHz (+3.5 dB, Q 1.0) so the tactile mouse-wheel detent clicks cut
- *      through clearly without harshness or altering sound character.
- * 3. Envelopes:
- *    - 25ms instant micro-fade on scroll start.
- *    - Smooth continuous parameter interpolation during scrolling.
- *    - 80–140ms fast fade-out to complete silence when scrolling pauses.
+ * Core Audio Behavior:
+ * 1. STRICT ACTIVE SCROLL SYNCHRONIZATION:
+ *    - Sound is active ONLY during physical scrolling (mouse wheel, trackpad, touch drag).
+ *    - Instant 20–30ms fade-in when scrolling begins.
+ *    - Continuous uninterrupted looping while scrolling is sustained.
+ *    - Volume smoothly scales with scroll velocity (quiet on slow, crisp and full on fast).
+ * 2. ABSOLUTE SILENCE ON STOP:
+ *    - When scrolling ceases (no scroll delta for 50–80ms), volume immediately ramps to zero
+ *      and the audio node is completely stopped and disconnected.
+ *    - ZERO background idling, zero lingering noise, zero mouse-hover or animation-loop triggers.
+ * 3. Mastering & Presence:
+ *    - Crisp presence peaking EQ (+3.5 dB at 3.4 kHz) brings out tactile mouse detents.
+ *    - Transparent dynamics compressor for rich body and anti-clipping protection.
+ *    - Clean post-compressor makeup gain (+3.2 dB) ensuring clarity on laptop speakers and headphones.
  */
 
 import { getAssetUrl } from "../utils/assetUrl";
@@ -40,11 +37,8 @@ export class FerrariScrollSound {
 
   private isMuted: boolean = false;
   private isPlaying: boolean = false;
-  private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private isLoading: boolean = false;
-
-  // Velocity threshold below which the user is considered stationary
-  private readonly VELOCITY_THRESHOLD = 0.003;
+  private stopTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem("ferrari_sound_enabled") : null;
@@ -69,18 +63,18 @@ export class FerrariScrollSound {
 
       this.ctx = new AudioContextClass();
 
-      // 1. Velocity-driven smooth gain node
+      // 1. Velocity-driven dynamic gain node
       this.gainNode = this.ctx.createGain();
       this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
 
-      // 2. Subtle presence EQ: crisp mouse-wheel click definition (+3.5dB at 3.4kHz)
+      // 2. Crisp Presence EQ: brings out mechanical detent clicks (+3.5dB at 3.4kHz)
       this.presenceFilter = this.ctx.createBiquadFilter();
       this.presenceFilter.type = "peaking";
       this.presenceFilter.frequency.setValueAtTime(3400, this.ctx.currentTime);
       this.presenceFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
       this.presenceFilter.gain.setValueAtTime(3.5, this.ctx.currentTime);
 
-      // 3. Transparent Dynamics Compressor: lifts tactile micro-texture and guarantees zero clipping
+      // 3. Transparent Dynamics Compressor: prevents digital clipping and adds body
       this.compressor = this.ctx.createDynamicsCompressor();
       this.compressor.threshold.setValueAtTime(-16, this.ctx.currentTime);
       this.compressor.knee.setValueAtTime(12, this.ctx.currentTime);
@@ -105,7 +99,7 @@ export class FerrariScrollSound {
 
       this.preloadAudio();
 
-      // Transparently unlock AudioContext on any legitimate user interaction
+      // Unlock AudioContext on user interaction
       const unlock = () => {
         if (!this.ctx) {
           this.init();
@@ -128,7 +122,7 @@ export class FerrariScrollSound {
         window.addEventListener(evt, unlock, { passive: true });
       });
     } catch {
-      // AudioContext unavailable or restricted in this environment
+      // AudioContext unavailable
     }
   }
 
@@ -181,10 +175,10 @@ export class FerrariScrollSound {
    * Starts the continuous seamless looping audio source node.
    * Ensures exactly one source node exists at any time.
    */
-  private startLoop(): void {
+  private startLoop(initialVolume: number): void {
     if (!this.ctx || !this.audioBuffer || !this.gainNode) return;
 
-    // Guard: never create multiple or overlapping instances
+    // Never create duplicate or overlapping nodes
     if (this.isPlaying && this.sourceNode) return;
 
     try {
@@ -198,13 +192,14 @@ export class FerrariScrollSound {
 
       const source = this.ctx.createBufferSource();
       source.buffer = this.audioBuffer;
-      source.loop = true; // Seamless gapless loop
+      source.loop = true; // Seamless loop
       source.connect(this.gainNode);
 
       const t = this.ctx.currentTime;
-      // Start with near-zero gain for a 20–30ms smooth micro-fade
+      // Immediate 20-30ms fade-in to target volume
       this.gainNode.gain.cancelScheduledValues(t);
       this.gainNode.gain.setValueAtTime(0.001, t);
+      this.gainNode.gain.linearRampToValueAtTime(initialVolume, t + 0.025);
 
       source.start(0);
 
@@ -223,122 +218,111 @@ export class FerrariScrollSound {
   }
 
   /**
-   * Updates the audio engine on every animation/scroll frame.
+   * Called strictly when ACTIVE SCROLLING occurs.
    *
-   * @param velocity Current scroll velocity derived from Ferrari animation progress
+   * @param normalizedVelocity Normalized scroll velocity (0.0 to 1.0)
    * @param _direction Scroll direction (1 = forward, -1 = reverse)
-   * @param _progress Current animation progress (0.0 to 1.0)
    */
-  public update(velocity: number, _direction: number = 1, _progress: number = 0): void {
+  public onScroll(normalizedVelocity: number, _direction: number = 1): void {
     this.ensureUnlocked();
     if (!this.ctx || this.isMuted || !this.audioBuffer) return;
 
+    // Clear any pending stop timeout
+    if (this.stopTimeoutId !== null) {
+      clearTimeout(this.stopTimeoutId);
+      this.stopTimeoutId = null;
+    }
+
     const t = this.ctx.currentTime;
+    const norm = Math.min(1.0, Math.max(0, normalizedVelocity));
+    const curve = Math.pow(norm, 0.60);
 
-    if (velocity > this.VELOCITY_THRESHOLD) {
-      // Cancel any pending stop/fade-out timer
-      if (this.stopTimer !== null) {
-        clearTimeout(this.stopTimer);
-        this.stopTimer = null;
-      }
+    /**
+     * Volume targets strictly matching specifications:
+     * - Slow: 20–30% (0.24–0.30)
+     * - Normal: 40–55% (0.42–0.50)
+     * - Fast: 55–70% (0.60–0.68)
+     * - Very fast: 70–80% (0.75–0.80)
+     */
+    const targetVol = 0.24 + curve * (0.78 - 0.24);
+    const targetRate = 0.96 + curve * 0.14;
 
-      // If not currently playing, start the seamless loop immediately
-      if (!this.isPlaying || !this.sourceNode) {
-        this.startLoop();
-      }
-
-      if (this.isPlaying && this.gainNode && this.sourceNode) {
-        /**
-         * Enhanced Velocity to Volume Targets:
-         * - Stationary (no scrolling): 0%
-         * - Slow scrolling: 20–30% (0.24–0.30)
-         * - Normal scrolling: 40–55% (0.42–0.50)
-         * - Fast scrolling: 55–70% (0.60–0.68)
-         * - Very fast scrolling: 70–80% (0.75–0.80)
-         */
-        const normalized = Math.min(
-          1.0,
-          Math.max(0, (velocity - this.VELOCITY_THRESHOLD) / 0.40)
-        );
-        const curve = Math.pow(normalized, 0.60); // Responsive perceptual curve
-
-        // Target volume smoothly spans 0.24 (slow crawl) to 0.78 (very fast flick)
-        const targetVol = 0.24 + curve * (0.78 - 0.24);
-
-        // Subtle mechanical playback rate nuance: 0.96 (slow) to 1.10 (very fast)
-        const targetRate = 0.96 + curve * 0.14;
-
-        // Smooth continuous interpolation avoiding any abrupt jumps
-        this.gainNode.gain.cancelScheduledValues(t);
-        this.gainNode.gain.setTargetAtTime(targetVol, t, 0.035);
-
-        this.sourceNode.playbackRate.cancelScheduledValues(t);
-        this.sourceNode.playbackRate.setTargetAtTime(targetRate, t, 0.045);
-      }
+    if (!this.isPlaying || !this.sourceNode) {
+      this.startLoop(targetVol);
     } else {
-      // User has paused or stopped scrolling: smoothly fade out
-      this.fadeToSilence();
+      if (this.gainNode) {
+        this.gainNode.gain.cancelScheduledValues(t);
+        this.gainNode.gain.setTargetAtTime(targetVol, t, 0.025);
+      }
+      if (this.sourceNode) {
+        this.sourceNode.playbackRate.cancelScheduledValues(t);
+        this.sourceNode.playbackRate.setTargetAtTime(targetRate, t, 0.035);
+      }
     }
   }
 
   /**
-   * Compatibility wrapper for callers providing (progress, velocity).
+   * Called immediately when user stops scrolling.
+   * Brings volume to 0 and stops/releases audio source for absolute silence.
    */
+  public onScrollStop(): void {
+    if (!this.isPlaying) return;
+
+    if (this.stopTimeoutId !== null) {
+      clearTimeout(this.stopTimeoutId);
+      this.stopTimeoutId = null;
+    }
+
+    if (this.ctx && this.gainNode) {
+      const t = this.ctx.currentTime;
+      this.gainNode.gain.cancelScheduledValues(t);
+      // Fast 20ms micro-ramp down to 0 to eliminate pops while stopping immediately
+      this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, t);
+      this.gainNode.gain.linearRampToValueAtTime(0, t + 0.02);
+    }
+
+    this.stopTimeoutId = setTimeout(() => {
+      try {
+        if (this.sourceNode) {
+          this.sourceNode.stop();
+          this.sourceNode.disconnect();
+          this.sourceNode = null;
+        }
+      } catch {}
+      this.isPlaying = false;
+      this.stopTimeoutId = null;
+    }, 25);
+  }
+
+  /**
+   * Compatibility adapter: maps (velocity, direction, progress) to onScroll/onScrollStop.
+   */
+  public update(velocity: number, direction: number = 1, _progress: number = 0): void {
+    if (velocity > 0.003) {
+      const norm = Math.min(1.0, Math.max(0, (velocity - 0.003) / 0.40));
+      this.onScroll(norm, direction);
+    } else {
+      this.onScrollStop();
+    }
+  }
+
   public updateScroll(progress: number, velocity: number): void {
     this.update(velocity, 1, progress);
   }
 
-  /**
-   * Smoothly fades the audio out over 80–140ms when scrolling pauses, then stops the source.
-   */
   public fadeToSilence(): void {
-    if (!this.isPlaying || !this.ctx || !this.gainNode) return;
-
-    const t = this.ctx.currentTime;
-    this.gainNode.gain.cancelScheduledValues(t);
-    // Smooth 80–120ms fade-out curve (reaches <0.001 within ~100ms)
-    this.gainNode.gain.setTargetAtTime(0, t, 0.045);
-
-    if (this.stopTimer === null) {
-      this.stopTimer = setTimeout(() => {
-        this.stopLoop();
-        this.stopTimer = null;
-      }, 130);
-    }
+    this.onScrollStop();
   }
 
-  /**
-   * Fully stops and releases the source node once completely silent.
-   */
-  private stopLoop(): void {
-    if (!this.isPlaying) return;
-
-    try {
-      if (this.sourceNode) {
-        this.sourceNode.stop();
-        this.sourceNode.disconnect();
-        this.sourceNode = null;
-      }
-    } catch {}
-    this.isPlaying = false;
-  }
-
-  /**
-   * Immediate stop when navigating away or leaving the exploded-view section.
-   */
   public stop(): void {
-    if (this.stopTimer !== null) {
-      clearTimeout(this.stopTimer);
-      this.stopTimer = null;
-    }
-    this.fadeToSilence();
+    this.onScrollStop();
   }
 
   public stopMotion(): void {
-    this.stop();
+    this.onScrollStop();
   }
 
-  // Pure no-ops: strictly prevent any extra whooshes, clicks, ambient beds, or parts audio
+  // Pure no-ops: strictly prevent any extra audio triggers
   public startAmbience(): void {}
   public stopAmbience(): void {}
   public componentWhoosh(): void {}
@@ -361,10 +345,10 @@ export class FerrariScrollSound {
     if (this.ctx && this.masterGain) {
       const t = this.ctx.currentTime;
       this.masterGain.gain.cancelScheduledValues(t);
-      this.masterGain.gain.setTargetAtTime(enabled ? 1.0 : 0.0, t, 0.03);
+      this.masterGain.gain.setTargetAtTime(enabled ? 1.0 : 0.0, t, 0.02);
     }
     if (!enabled) {
-      this.stop();
+      this.onScrollStop();
     }
   }
 
@@ -376,7 +360,7 @@ export class FerrariScrollSound {
    * Cleanup on component unmount.
    */
   public destroy(): void {
-    this.stop();
+    this.onScrollStop();
     if (this.ctx) {
       this.ctx.close().catch(() => {});
       this.ctx = null;
