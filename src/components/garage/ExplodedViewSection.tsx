@@ -233,61 +233,83 @@ export const ExplodedViewSection: React.FC = () => {
       {/* Sticky 100vh Viewport Stage with ample top clearance for navbar */}
       <div className="sticky top-0 left-0 w-full h-screen overflow-hidden flex flex-col justify-between px-6 sm:px-12 pt-24 sm:pt-28 pb-8 pointer-events-none">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 z-10 pointer-events-auto">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="w-2.5 h-2.5 bg-[#d40000] rotate-45" />
-              <span className="font-mono-tech text-[10px] sm:text-xs tracking-[0.3em] uppercase text-[#d40000] font-bold">
+        <div className="z-10 w-full flex flex-col gap-1 sm:gap-2">
+          {/* Top Line: ENGINEERING EXPLODED VIEW (left) --- SCROLL DOWN (center/in between) --- SOUND TOGGLE (right) */}
+          <div className="w-full flex items-center justify-between gap-3 pointer-events-auto">
+            {/* Left: Engineering Exploded View */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="w-2.5 h-2.5 bg-[#d40000] rotate-45 shrink-0" />
+              <span className="font-mono-tech text-[10px] sm:text-xs tracking-[0.25em] sm:tracking-[0.3em] uppercase text-[#d40000] font-bold whitespace-nowrap">
                 ENGINEERING EXPLODED VIEW
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <h2 className="font-display font-black text-3xl sm:text-5xl uppercase tracking-wider text-[#d40000] drop-shadow-[0_0_30px_rgba(212,0,0,0.5)]">
-                FERRARI LAFERRARI
-              </h2>
+
+            {/* In Between: SCROLL DOWN indicator (unclickable) */}
+            <div
+              className={`pointer-events-none select-none transition-opacity duration-300 ${
+                currentFrameIndex < 35 ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="always-white flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000]/70 shadow-[0_0_20px_rgba(212,0,0,0.45)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
+                <span
+                  style={{ color: "#ffffff" }}
+                  className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] uppercase font-bold !text-white drop-shadow-sm whitespace-nowrap"
+                >
+                  SCROLL DOWN
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
+              </div>
             </div>
+
+            {/* Right: Minimalist Premium Audio Toggle Button - guaranteed white in both light and dark modes */}
+            <button
+              onClick={toggleSound}
+              aria-label={isSoundActive ? "Mute interactive engineering audio" : "Enable interactive engineering audio"}
+              style={{ color: "#ffffff" }}
+              className="always-white flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-white/25 hover:border-[#d40000] shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_20px_rgba(212,0,0,0.4)] transition-all cursor-pointer pointer-events-auto group !text-white shrink-0"
+            >
+              {isSoundActive ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-[#d40000]" />
+                  <span
+                    style={{ color: "#ffffff" }}
+                    className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
+                  >
+                    SOUND ON
+                  </span>
+                  <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
+                    <span className="w-0.5 h-2 bg-[#d40000] animate-pulse" />
+                    <span className="w-0.5 h-3 bg-[#d40000] animate-pulse delay-75" />
+                    <span className="w-0.5 h-1.5 bg-[#d40000] animate-pulse delay-150" />
+                  </span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 !text-white" style={{ color: "#ffffff" }} />
+                  <span
+                    style={{ color: "#ffffff" }}
+                    className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
+                  >
+                    SOUND OFF
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Car Name & Subtitle */}
+          <div className="pointer-events-auto">
+            <h2 className="font-display font-black text-3xl sm:text-5xl uppercase tracking-wider text-[#d40000] drop-shadow-[0_0_30px_rgba(212,0,0,0.5)]">
+              FERRARI LAFERRARI
+            </h2>
             <p
-              style={{ color: "rgba(255, 255, 255, 0.75)" }}
-              className="font-mono-tech text-[11px] tracking-widest uppercase font-bold mt-1 !text-white/80"
+              style={{ color: "#000000" }}
+              className="font-mono-tech text-[11px] tracking-widest uppercase font-bold mt-1 !text-black"
             >
               SCROLL DOWN TO EXPLODE &middot; SCROLL UP TO REASSEMBLE
             </p>
           </div>
-
-          {/* Minimalist Premium Audio Toggle Button - guaranteed white in both light and dark modes */}
-          <button
-            onClick={toggleSound}
-            aria-label={isSoundActive ? "Mute interactive engineering audio" : "Enable interactive engineering audio"}
-            style={{ color: "#ffffff" }}
-            className="always-white flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-white/25 hover:border-[#d40000] shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_20px_rgba(212,0,0,0.4)] transition-all cursor-pointer pointer-events-auto group !text-white shrink-0 self-start sm:self-auto"
-          >
-            {isSoundActive ? (
-              <>
-                <Volume2 className="w-3.5 h-3.5 text-[#d40000]" />
-                <span
-                  style={{ color: "#ffffff" }}
-                  className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
-                >
-                  SOUND ON
-                </span>
-                <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
-                  <span className="w-0.5 h-2 bg-[#d40000] animate-pulse" />
-                  <span className="w-0.5 h-3 bg-[#d40000] animate-pulse delay-75" />
-                  <span className="w-0.5 h-1.5 bg-[#d40000] animate-pulse delay-150" />
-                </span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="w-3.5 h-3.5 !text-white" style={{ color: "#ffffff" }} />
-                <span
-                  style={{ color: "#ffffff" }}
-                  className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold !text-white"
-                >
-                  SOUND OFF
-                </span>
-              </>
-            )}
-          </button>
         </div>
 
         {/* Full-Screen 4K Canvas Stage matching the total laptop screen */}
@@ -313,22 +335,6 @@ export const ExplodedViewSection: React.FC = () => {
             <span className="font-mono-tech text-[11px] text-white/60 mt-2 block tracking-wider">
               {loadedCount} / {TOTAL_FRAMES} FRAMES ({Math.round((loadedCount / TOTAL_FRAMES) * 100)}%)
             </span>
-          </div>
-        )}
-
-        {/* Centered Unclickable Scroll Down Indicator below the car */}
-        {currentFrameIndex < 35 && (
-          <div className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none select-none z-20 transition-opacity duration-300">
-            <div className="always-white flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-[#d40000]/70 shadow-[0_0_20px_rgba(212,0,0,0.45)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d40000] shadow-[0_0_6px_#d40000] shrink-0" />
-              <span
-                style={{ color: "#ffffff" }}
-                className="font-mono-tech text-[10px] sm:text-[11px] tracking-[0.25em] uppercase font-bold !text-white drop-shadow-sm"
-              >
-                SCROLL DOWN
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-white !text-white animate-bounce shrink-0" />
-            </div>
           </div>
         )}
 
