@@ -1,8 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @custom-variant light (&:where(.light, .light *));
 @custom-variant dark (&:where(.dark, .dark *));
 @source "../index.html";
-@source "../src/**/*.{ts,tsx,js,jsx}";
+@source "./**/*.{ts,tsx,js,jsx}";
 
 @layer base {
   :root {
