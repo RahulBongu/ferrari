@@ -1,4 +1,4 @@
-*.glb binary
+*.glb filter=lfs diff=lfs merge=lfs -text
 *.jpg binary
 *.png binary
 *.webm binary
