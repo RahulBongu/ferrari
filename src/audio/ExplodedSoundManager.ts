@@ -65,6 +65,9 @@ export class SoundManager {
   constructor() {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem("ferrari_sound_enabled") : null;
     this.isMuted = saved === "false";
+    if (typeof window !== "undefined") {
+      this.init();
+    }
   }
 
   /**
@@ -90,33 +93,36 @@ export class SoundManager {
       this.setupMotionLayer();
       this.setupEngineLayer();
 
-      // Listen for initial user gesture to unlock AudioContext across desktop & mobile
+      // Persistent unlock listeners across all common user interaction events
       const unlock = () => {
-        if (!this.ctx) return;
-        if (this.ctx.state === "suspended") {
+        if (!this.ctx) {
+          this.init();
+        }
+        if (this.ctx && this.ctx.state === "suspended") {
           this.ctx.resume().catch(() => {});
         }
-        window.removeEventListener("click", unlock);
-        window.removeEventListener("pointerdown", unlock);
-        window.removeEventListener("touchstart", unlock);
-        window.removeEventListener("touchend", unlock);
-        window.removeEventListener("keydown", unlock);
-        window.removeEventListener("wheel", unlock);
       };
 
-      window.addEventListener("click", unlock, { passive: true, once: true });
-      window.addEventListener("pointerdown", unlock, { passive: true, once: true });
-      window.addEventListener("touchstart", unlock, { passive: true, once: true });
-      window.addEventListener("touchend", unlock, { passive: true, once: true });
-      window.addEventListener("keydown", unlock, { passive: true, once: true });
-      window.addEventListener("wheel", unlock, { passive: true, once: true });
+      const unlockEvents = [
+        "click",
+        "pointerdown",
+        "mousedown",
+        "touchstart",
+        "touchend",
+        "keydown",
+        "wheel",
+        "scroll",
+      ];
+      unlockEvents.forEach((evt) => {
+        window.addEventListener(evt, unlock, { passive: true });
+      });
     } catch {
       // AudioContext unavailable or restricted
     }
   }
 
   /**
-   * Guarantees AudioContext is running on user interaction.
+   * Guarantees AudioContext is created and running on user interaction.
    */
   public ensureUnlocked(): void {
     if (!this.ctx) {
@@ -245,8 +251,8 @@ export class SoundManager {
   }
 
   public startAmbience(): void {
-    if (!this.ctx || !this.ambienceGain || this.isAmbienceActive) return;
     this.ensureUnlocked();
+    if (!this.ctx || !this.ambienceGain || this.isAmbienceActive || this.isMuted) return;
     const t = this.ctx.currentTime;
     this.ambienceGain.gain.cancelScheduledValues(t);
     // Sophisticated 6.5% level (5–10% recommended): technical acoustic presence
@@ -361,8 +367,8 @@ export class SoundManager {
    * Prevents audio spam via smooth continuous parameter ramping.
    */
   public updateScroll(progress: number, velocity: number): void {
-    if (!this.ctx || this.isMuted) return;
     this.ensureUnlocked();
+    if (!this.ctx || this.isMuted) return;
 
     const t = this.ctx.currentTime;
     const clampedVel = Math.min(0.06, Math.max(0, velocity));
@@ -540,6 +546,7 @@ export class SoundManager {
    * Light aerodynamic whoosh + titanium presence (Level: 15–25%).
    */
   public componentWhoosh(velocity: number = 0.2): void {
+    this.ensureUnlocked();
     if (!this.ctx || this.isMuted || !this.noiseBuffer || !this.masterGain) return;
     const t = this.ctx.currentTime;
 
@@ -592,6 +599,7 @@ export class SoundManager {
    * Deeper displacement + carbon-fiber mass friction (Level: 20–35%).
    */
   public heavyPanelMove(velocity: number = 0.2): void {
+    this.ensureUnlocked();
     if (!this.ctx || this.isMuted || !this.noiseBuffer || !this.masterGain) return;
     const t = this.ctx.currentTime;
 
@@ -631,6 +639,7 @@ export class SoundManager {
    * Models high-tolerance automotive assembly, strictly avoids arcade beeps.
    */
   public mechanicalClick(type: "light" | "heavy" = "light"): void {
+    this.ensureUnlocked();
     if (!this.ctx || this.isMuted || !this.masterGain) return;
     const t = this.ctx.currentTime;
 
@@ -701,6 +710,7 @@ export class SoundManager {
    * Staggered precision micro-locks + cinematic sub-bass tail (Level: maximum 50–60%).
    */
   public finalSettle(): void {
+    this.ensureUnlocked();
     if (!this.ctx || this.isMuted || !this.masterGain) return;
 
     // Staggered precision locking sequence

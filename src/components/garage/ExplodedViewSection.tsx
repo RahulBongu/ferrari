@@ -21,10 +21,18 @@ export const ExplodedViewSection: React.FC = () => {
   const animationFrameIdRef = useRef<number | null>(null);
 
   // Toggle interactive sound design
-  const toggleSound = () => {
+  const toggleSound = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const nextState = !isSoundActive;
     setIsSoundActive(nextState);
-    explodedSoundManager.setSoundEnabled(nextState);
+    soundManager.setSoundEnabled(nextState);
+    if (nextState) {
+      soundManager.ensureUnlocked();
+      soundManager.startAmbience();
+    } else {
+      soundManager.stopAmbience();
+      soundManager.stopMotion();
+    }
   };
 
   // Render frame on 4K canvas (3840x2160)
@@ -134,10 +142,13 @@ export const ExplodedViewSection: React.FC = () => {
       // Only activate ambience while within or adjacent to the exploded section
       const isInsideExplodeSection = scrolled >= -80 && scrolled <= totalScrollable + 80;
       if (isInsideExplodeSection) {
-        explodedSoundManager.startAmbience();
+        soundManager.ensureUnlocked();
+        if (isSoundActive) {
+          soundManager.startAmbience();
+        }
       } else {
-        explodedSoundManager.stopAmbience();
-        explodedSoundManager.stopMotion();
+        soundManager.stopAmbience();
+        soundManager.stopMotion();
       }
     };
 
@@ -146,10 +157,10 @@ export const ExplodedViewSection: React.FC = () => {
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      explodedSoundManager.stopAmbience();
-      explodedSoundManager.stopMotion();
+      soundManager.stopAmbience();
+      soundManager.stopMotion();
     };
-  }, []);
+  }, [isSoundActive]);
 
   // Animation loop with refined mechanical damping and velocity audio calculation
   useEffect(() => {
@@ -168,13 +179,15 @@ export const ExplodedViewSection: React.FC = () => {
       lastProgressForVel = currentProgressRef.current;
       lastTime = now;
 
-      // Synchronize sound design system to scroll progress and velocity
-      explodedSoundManager.updateScroll(currentProgressRef.current, velocity);
+      // Synchronize sound design system to scroll progress and velocity immediately
+      if (isSoundActive) {
+        soundManager.updateScroll(currentProgressRef.current, velocity);
+      }
 
       if (velocity < 0.003) {
         if (!stopMotionTimer) {
           stopMotionTimer = setTimeout(() => {
-            explodedSoundManager.stopMotion();
+            soundManager.stopMotion();
             stopMotionTimer = null;
           }, 90);
         }
@@ -208,10 +221,10 @@ export const ExplodedViewSection: React.FC = () => {
       if (stopMotionTimer) {
         clearTimeout(stopMotionTimer);
       }
-      explodedSoundManager.stopMotion();
-      explodedSoundManager.stopAmbience();
+      soundManager.stopMotion();
+      soundManager.stopAmbience();
     };
-  }, [renderFrame]);
+  }, [renderFrame, isSoundActive]);
 
   // Dynamic engineering phase label
   const getPhaseLabel = (frame: number) => {
