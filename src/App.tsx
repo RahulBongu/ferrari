@@ -2,6 +2,7 @@ import React, { Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Navigation } from "./components/navigation/Navigation";
 import { LandingPage } from "./pages/LandingPage";
+import { Analytics } from "@vercel/analytics/react";
 
 // Code-split pages for instantaneous initial load and lazy 3D loading
 const GaragePage = React.lazy(() =>
@@ -41,6 +42,7 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter basename={routerBasename}>
       <ScrollToTop />
+      <Analytics />
       <div className="min-h-screen bg-[#070709] text-white flex flex-col selection:bg-[#d40000] selection:text-white">
         <Navigation />
         <main className="flex-1">
