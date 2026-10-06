@@ -36,7 +36,7 @@ const ScrollToTop: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ScrollToTop />
       <div className="min-h-screen bg-[#070709] text-white flex flex-col selection:bg-[#d40000] selection:text-white">
         <Navigation />
