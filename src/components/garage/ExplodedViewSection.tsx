@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Loader } from "../common/Loader";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Volume2, VolumeX } from "lucide-react";
 import { getAssetUrl } from "../../utils/assetUrl";
+import { explodedSoundManager } from "../../audio/ExplodedSoundManager";
 
 const TOTAL_FRAMES = 240;
 
@@ -12,43 +13,19 @@ export const ExplodedViewSection: React.FC = () => {
   const [loadedCount, setLoadedCount] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  const [isSoundActive, setIsSoundActive] = useState<boolean>(() => explodedSoundManager.isSoundEnabled());
 
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
   const animationFrameIdRef = useRef<number | null>(null);
-  const scrollAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const finalThrottleTriggeredRef = useRef<boolean>(false);
-  const scrollStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isPlayingAudioRef = useRef<boolean>(false);
 
-  // Initialize explode_scroll.mp3 audio
-  useEffect(() => {
-    const audio = new Audio(getAssetUrl("/assets/audio/explode_scroll.mp3"));
-    audio.preload = "auto";
-    audio.loop = true;
-    audio.volume = 0;
-    scrollAudioRef.current = audio;
-
-    return () => {
-      if (scrollStopTimeoutRef.current) {
-        clearTimeout(scrollStopTimeoutRef.current);
-      }
-      if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
-      }
-      audio.pause();
-      audio.src = "";
-      scrollAudioRef.current = null;
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close().catch(() => {});
-        audioCtxRef.current = null;
-      }
-    };
-  }, []);
+  // Toggle interactive sound design
+  const toggleSound = () => {
+    const nextState = !isSoundActive;
+    setIsSoundActive(nextState);
+    explodedSoundManager.setSoundEnabled(nextState);
+  };
 
   // Render frame on 4K canvas (3840x2160)
   const renderFrame = useCallback((frameIdx: number): boolean => {
@@ -72,7 +49,6 @@ export const ExplodedViewSection: React.FC = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    // Draw directly to 4K canvas dimensions (3840x2160)
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return true;
   }, []);
@@ -91,7 +67,6 @@ export const ExplodedViewSection: React.FC = () => {
       loaded++;
       setLoadedCount(1);
       setIsReady(true);
-      // Immediately render frame 0
       renderFrame(0);
     };
     firstImg.onerror = () => {
@@ -143,118 +118,8 @@ export const ExplodedViewSection: React.FC = () => {
     }
   }, [renderFrame]);
 
-  // Scroll listener to update timeline progress and handle scroll sound
+  // Scroll listener to update timeline progress and handle audio zone
   useEffect(() => {
-    let lastScrollProgress = -1;
-
-    const initWebAudio = () => {
-      if (audioCtxRef.current || !scrollAudioRef.current) return;
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const source = ctx.createMediaElementSource(scrollAudioRef.current);
-          const gainNode = ctx.createGain();
-          gainNode.gain.value = 2.8; // High volume amplification boost (280%)
-          source.connect(gainNode);
-          gainNode.connect(ctx.destination);
-          audioCtxRef.current = ctx;
-          gainNodeRef.current = gainNode;
-        }
-      } catch {
-        // Fallback to standard audio element if context blocked
-      }
-    };
-
-    const stopAudio = () => {
-      const audio = scrollAudioRef.current;
-      if (!audio) return;
-      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-
-      let vol = audio.volume;
-      fadeIntervalRef.current = setInterval(() => {
-        vol = Math.max(0, vol - 0.08);
-        if (audio) audio.volume = vol;
-        if (vol <= 0) {
-          if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-          fadeIntervalRef.current = null;
-          isPlayingAudioRef.current = false;
-          if (audio) {
-            audio.pause();
-            audio.playbackRate = 1.0;
-          }
-        }
-      }, 40);
-    };
-
-    // Continuous engine audio during explode scroll: sustained full sound without stutter
-    const playContinuousScrollAudio = () => {
-      const audio = scrollAudioRef.current;
-      if (!audio) return;
-
-      initWebAudio();
-      if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.value = 2.8;
-      }
-
-      if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
-        fadeIntervalRef.current = null;
-      }
-
-      audio.volume = 1.0;
-      audio.playbackRate = 1.0;
-      audio.loop = true;
-
-      if (!isPlayingAudioRef.current || audio.paused) {
-        isPlayingAudioRef.current = true;
-        audio.play().catch(() => {});
-      }
-
-      // Sustained 1.5s playback so wheel pauses do NOT chop the sound into "stopping stopping"
-      if (scrollStopTimeoutRef.current) {
-        clearTimeout(scrollStopTimeoutRef.current);
-      }
-      scrollStopTimeoutRef.current = setTimeout(() => {
-        stopAudio();
-      }, 1500);
-    };
-
-    // Full throttle roar on final scroll moving out of explode view: plays full sound completely
-    const playFullThrottleRoar = () => {
-      const audio = scrollAudioRef.current;
-      if (!audio) return;
-
-      initWebAudio();
-      if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.value = 3.2; // Maximum volume boost (320%)
-      }
-
-      if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
-        fadeIntervalRef.current = null;
-      }
-
-      if (scrollStopTimeoutRef.current) {
-        clearTimeout(scrollStopTimeoutRef.current);
-        scrollStopTimeoutRef.current = null;
-      }
-
-      audio.volume = 1.0;
-      audio.playbackRate = 1.25;
-      audio.loop = false; // Plays the full sample without stopping or chopping
-      audio.play().catch(() => {});
-      isPlayingAudioRef.current = true;
-    };
-
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -266,35 +131,14 @@ export const ExplodedViewSection: React.FC = () => {
       const progress = Math.max(0, Math.min(1, scrolled / totalScrollable));
       targetProgressRef.current = progress;
 
-      // Only play while actively inside the explode scroll section
-      const isInsideExplodeSection = scrolled >= 0 && scrolled <= totalScrollable;
-
+      // Only activate ambience while within or adjacent to the exploded section
+      const isInsideExplodeSection = scrolled >= -80 && scrolled <= totalScrollable + 80;
       if (isInsideExplodeSection) {
-        // Final scroll approaching exit: trigger full throttle roar
-        if (progress >= 0.88) {
-          if (!finalThrottleTriggeredRef.current) {
-            finalThrottleTriggeredRef.current = true;
-            playFullThrottleRoar();
-          }
-        } else {
-          finalThrottleTriggeredRef.current = false;
-          // Smooth continuous audio while scrubbing
-          if (lastScrollProgress !== -1 && Math.abs(progress - lastScrollProgress) > 0.0002) {
-            playContinuousScrollAudio();
-          }
-        }
+        explodedSoundManager.startAmbience();
       } else {
-        // Moving downwards from explode view into the garage showroom
-        if (scrolled > totalScrollable && !finalThrottleTriggeredRef.current && lastScrollProgress > 0.8) {
-          finalThrottleTriggeredRef.current = true;
-          playFullThrottleRoar();
-        } else if (scrolled < 0) {
-          stopAudio();
-          finalThrottleTriggeredRef.current = false;
-        }
+        explodedSoundManager.stopAmbience();
+        explodedSoundManager.stopMotion();
       }
-
-      lastScrollProgress = progress;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -302,17 +146,42 @@ export const ExplodedViewSection: React.FC = () => {
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      stopAudio();
+      explodedSoundManager.stopAmbience();
+      explodedSoundManager.stopMotion();
     };
   }, []);
 
-  // Animation loop with micro-lerp for ultra-smooth scrubbing
+  // Animation loop with refined mechanical damping and velocity audio calculation
   useEffect(() => {
     let lastRenderedFrame = -1;
+    let lastProgressForVel = 0;
+    let lastTime = performance.now();
+    let stopMotionTimer: ReturnType<typeof setTimeout> | null = null;
 
     const loop = () => {
-      // Subtle damping for buttery smooth motion without delay
-      currentProgressRef.current += (targetProgressRef.current - currentProgressRef.current) * 0.25;
+      // Slower, weighted mechanical damping (0.18) for tactile inertia without latency
+      currentProgressRef.current += (targetProgressRef.current - currentProgressRef.current) * 0.18;
+
+      const now = performance.now();
+      const dt = Math.max(1, now - lastTime);
+      const velocity = Math.abs(currentProgressRef.current - lastProgressForVel) / (dt / 1000);
+      lastProgressForVel = currentProgressRef.current;
+      lastTime = now;
+
+      // Synchronize sound design system to scroll progress and velocity
+      explodedSoundManager.updateScroll(currentProgressRef.current, velocity);
+
+      if (velocity < 0.003) {
+        if (!stopMotionTimer) {
+          stopMotionTimer = setTimeout(() => {
+            explodedSoundManager.stopMotion();
+            stopMotionTimer = null;
+          }, 90);
+        }
+      } else if (stopMotionTimer) {
+        clearTimeout(stopMotionTimer);
+        stopMotionTimer = null;
+      }
 
       const frameIdx = Math.max(
         0,
@@ -336,6 +205,11 @@ export const ExplodedViewSection: React.FC = () => {
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
+      if (stopMotionTimer) {
+        clearTimeout(stopMotionTimer);
+      }
+      explodedSoundManager.stopMotion();
+      explodedSoundManager.stopAmbience();
     };
   }, [renderFrame]);
 
@@ -354,7 +228,7 @@ export const ExplodedViewSection: React.FC = () => {
     <div
       ref={containerRef}
       className="relative w-full bg-[#070709] select-none"
-      style={{ height: "380vh" }} // 3.8 viewports of scroll distance for smooth scrubbing
+      style={{ height: "560vh" }} // 5.6 viewports of scroll distance: slower, physical, deliberate exploration
     >
       {/* Sticky 100vh Viewport Stage with ample top clearance for navbar */}
       <div className="sticky top-0 left-0 w-full h-screen overflow-hidden flex flex-col justify-between px-6 sm:px-12 pt-24 sm:pt-28 pb-8 pointer-events-none">
@@ -390,6 +264,34 @@ export const ExplodedViewSection: React.FC = () => {
               SCROLL DOWN TO EXPLODE &middot; SCROLL UP TO REASSEMBLE
             </p>
           </div>
+
+          {/* Minimalist Premium Audio Toggle Button */}
+          <button
+            onClick={toggleSound}
+            aria-label={isSoundActive ? "Mute interactive engineering audio" : "Enable interactive engineering audio"}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-white/20 hover:border-[#d40000] shadow-[0_0_15px_rgba(0,0,0,0.6)] hover:shadow-[0_0_20px_rgba(212,0,0,0.4)] transition-all cursor-pointer pointer-events-auto group text-white/80 hover:text-white shrink-0 self-start sm:self-auto"
+          >
+            {isSoundActive ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-[#d40000]" />
+                <span className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold text-white">
+                  SOUND ON
+                </span>
+                <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
+                  <span className="w-0.5 h-2 bg-[#d40000] animate-pulse" />
+                  <span className="w-0.5 h-3 bg-[#d40000] animate-pulse delay-75" />
+                  <span className="w-0.5 h-1.5 bg-[#d40000] animate-pulse delay-150" />
+                </span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-white/40" />
+                <span className="font-mono-tech text-[10px] tracking-[0.2em] uppercase font-bold text-white/50">
+                  SOUND OFF
+                </span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Full-Screen 4K Canvas Stage matching the total laptop screen */}
@@ -417,8 +319,6 @@ export const ExplodedViewSection: React.FC = () => {
             </span>
           </div>
         )}
-
-
 
         {/* Bottom Status & Progress Bar */}
         <div className="flex items-end justify-between z-10 gap-4">

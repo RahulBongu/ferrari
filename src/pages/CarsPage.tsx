@@ -12,6 +12,65 @@ import { useComparisonStore } from "../store/comparisonStore";
 import { Loader } from "../components/common/Loader";
 import { getAssetUrl } from "../utils/assetUrl";
 
+// Procedural Ferrari Shield Emblem Fallback
+const ProceduralFerrariEmblem: React.FC = () => {
+  return (
+    <group scale={1.8}>
+      {/* Outer red shield boundary */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[1.5, 2.0, 0.12]} />
+        <meshStandardMaterial color="#d40000" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Canary yellow shield plate */}
+      <mesh position={[0, -0.05, 0.08]}>
+        <boxGeometry args={[1.36, 1.72, 0.08]} />
+        <meshStandardMaterial color="#ffc700" metalness={0.3} roughness={0.3} emissive="#ffaa00" emissiveIntensity={0.2} />
+      </mesh>
+      {/* Italian tricolor header: Green / White / Red */}
+      <mesh position={[-0.45, 0.88, 0.1]}>
+        <boxGeometry args={[0.42, 0.16, 0.06]} />
+        <meshStandardMaterial color="#009246" />
+      </mesh>
+      <mesh position={[0, 0.88, 0.1]}>
+        <boxGeometry args={[0.42, 0.16, 0.06]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+      </mesh>
+      <mesh position={[0.45, 0.88, 0.1]}>
+        <boxGeometry args={[0.42, 0.16, 0.06]} />
+        <meshStandardMaterial color="#ce2b37" />
+      </mesh>
+      {/* Prancing horse center disc silhouette */}
+      <mesh position={[0, -0.06, 0.14]}>
+        <cylinderGeometry args={[0.38, 0.38, 0.05, 32]} />
+        <meshStandardMaterial color="#0a0a0a" metalness={0.9} roughness={0.2} />
+      </mesh>
+    </group>
+  );
+};
+
+// Error Boundary specifically guarding 3D Logo GLTF parsing
+class LogoErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.warn("Ferrari 3D Logo load interrupted, displaying procedural emblem:", err);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 // Rotating 3D Ferrari Logo component
 const Ferrari3DLogo: React.FC = () => {
   const gltf = useGLTF(getAssetUrl("/assets/models/ferrari_logo.glb"));
@@ -426,7 +485,9 @@ export const CarsPage: React.FC = () => {
                   <spotLight position={[5, 10, 5]} intensity={3.0} castShadow />
                   <pointLight position={[-4, -2, 2]} intensity={2.0} color="#d40000" />
                   <Center>
-                    <Ferrari3DLogo />
+                    <LogoErrorBoundary fallback={<ProceduralFerrariEmblem />}>
+                      <Ferrari3DLogo />
+                    </LogoErrorBoundary>
                   </Center>
                   <OrbitControls
                     autoRotate

@@ -101,24 +101,31 @@ class GLBErrorBoundary extends React.Component<
 }
 
 export const VehicleModel: React.FC<VehicleModelProps> = ({ vehicle, wireframe = false }) => {
-  const [modelExists, setModelExists] = useState<boolean>(false);
+  const [modelAvailable, setModelAvailable] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!vehicle.model3D) return;
+    if (!vehicle.model3D) {
+      setModelAvailable(false);
+      return;
+    }
     let isMounted = true;
     fetch(vehicle.model3D, { method: "HEAD" })
       .then((res) => {
         const contentType = res.headers.get("content-type") || "";
         const contentLength = Number(res.headers.get("content-length") || "0");
         if (isMounted) {
-          // Verify response is OK, not an HTML 404 page, and not a 132-byte Git LFS text pointer
-          const isRealBinary = contentLength === 0 || contentLength > 500;
-          setModelExists(res.ok && !contentType.includes("text/html") && isRealBinary);
+          // If server explicitly responds with 404/html or a tiny Git LFS text pointer (< 300 bytes)
+          if (!res.ok || contentType.includes("text/html") || (contentLength > 0 && contentLength < 300)) {
+            setModelAvailable(false);
+          } else {
+            setModelAvailable(true);
+          }
         }
       })
       .catch(() => {
+        // If HEAD request fails, let GLBErrorBoundary attempt loading directly
         if (isMounted) {
-          setModelExists(false);
+          setModelAvailable(true);
         }
       });
 
@@ -135,7 +142,7 @@ export const VehicleModel: React.FC<VehicleModelProps> = ({ vehicle, wireframe =
     />
   );
 
-  if (modelExists === true && vehicle.model3D) {
+  if (modelAvailable && vehicle.model3D) {
     return (
       <GLBErrorBoundary fallback={proceduralFallback}>
         <GLBModel url={vehicle.model3D} wireframe={wireframe} />
