@@ -7,7 +7,7 @@ export const Switch: React.FC = () => {
   const isDark = theme === "dark";
 
   return (
-    <StyledWrapper>
+    <StyledWrapper $isDark={isDark}>
       <div className="switch-wrapper">
         <span className={`label-end left-label ${!isDark ? "active" : ""}`}>
           LIGHT
@@ -32,7 +32,7 @@ export const Switch: React.FC = () => {
   );
 };
 
-const StyledWrapper = styled.div`
+const StyledWrapper = styled.div<{ $isDark: boolean }>`
   display: inline-flex;
   align-items: center;
 
@@ -49,12 +49,15 @@ const StyledWrapper = styled.div`
     letter-spacing: 0.15em;
     font-weight: 700;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.45);
     transition: color 0.3s ease;
   }
 
-  html.light .label-end {
-    color: rgba(0, 0, 0, 0.45);
+  .left-label {
+    color: ${(props) => (props.$isDark ? "rgba(255, 255, 255, 0.45)" : "#d40000")};
+  }
+
+  .right-label {
+    color: ${(props) => (props.$isDark ? "#d40000" : "#000000")};
   }
 
   .label-end.active {
