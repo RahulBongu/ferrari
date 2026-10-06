@@ -28,10 +28,8 @@ export const ExplodedViewSection: React.FC = () => {
     soundManager.setSoundEnabled(nextState);
     if (nextState) {
       soundManager.ensureUnlocked();
-      soundManager.startAmbience();
     } else {
-      soundManager.stopAmbience();
-      soundManager.stopMotion();
+      soundManager.stop();
     }
   };
 
@@ -139,16 +137,12 @@ export const ExplodedViewSection: React.FC = () => {
       const progress = Math.max(0, Math.min(1, scrolled / totalScrollable));
       targetProgressRef.current = progress;
 
-      // Only activate ambience while within or adjacent to the exploded section
+      // Ensure audio engine is unlocked while within or adjacent to the exploded section
       const isInsideExplodeSection = scrolled >= -80 && scrolled <= totalScrollable + 80;
       if (isInsideExplodeSection) {
         soundManager.ensureUnlocked();
-        if (isSoundActive) {
-          soundManager.startAmbience();
-        }
       } else {
-        soundManager.stopAmbience();
-        soundManager.stopMotion();
+        soundManager.stop();
       }
     };
 
@@ -157,17 +151,15 @@ export const ExplodedViewSection: React.FC = () => {
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      soundManager.stopAmbience();
-      soundManager.stopMotion();
+      soundManager.stop();
     };
-  }, [isSoundActive]);
+  }, []);
 
   // Animation loop with refined mechanical damping and velocity audio calculation
   useEffect(() => {
     let lastRenderedFrame = -1;
     let lastProgressForVel = 0;
     let lastTime = performance.now();
-    let stopMotionTimer: ReturnType<typeof setTimeout> | null = null;
 
     const loop = () => {
       // Slower, weighted mechanical damping (0.18) for tactile inertia without latency
@@ -175,25 +167,15 @@ export const ExplodedViewSection: React.FC = () => {
 
       const now = performance.now();
       const dt = Math.max(1, now - lastTime);
-      const velocity = Math.abs(currentProgressRef.current - lastProgressForVel) / (dt / 1000);
+      const deltaProgress = currentProgressRef.current - lastProgressForVel;
+      const velocity = Math.abs(deltaProgress) / (dt / 1000);
+      const direction = deltaProgress >= 0 ? 1 : -1;
       lastProgressForVel = currentProgressRef.current;
       lastTime = now;
 
-      // Synchronize sound design system to scroll progress and velocity immediately
+      // Synchronize continuous mechanical scroll sound directly to velocity and direction
       if (isSoundActive) {
-        soundManager.updateScroll(currentProgressRef.current, velocity);
-      }
-
-      if (velocity < 0.003) {
-        if (!stopMotionTimer) {
-          stopMotionTimer = setTimeout(() => {
-            soundManager.stopMotion();
-            stopMotionTimer = null;
-          }, 90);
-        }
-      } else if (stopMotionTimer) {
-        clearTimeout(stopMotionTimer);
-        stopMotionTimer = null;
+        soundManager.update(velocity, direction, currentProgressRef.current);
       }
 
       const frameIdx = Math.max(
@@ -218,11 +200,7 @@ export const ExplodedViewSection: React.FC = () => {
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
-      if (stopMotionTimer) {
-        clearTimeout(stopMotionTimer);
-      }
-      soundManager.stopMotion();
-      soundManager.stopAmbience();
+      soundManager.stop();
     };
   }, [renderFrame, isSoundActive]);
 
