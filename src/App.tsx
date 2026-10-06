@@ -34,9 +34,12 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
+const rawBase = import.meta.env.BASE_URL || "";
+const routerBasename = rawBase === "/" ? undefined : rawBase.replace(/\/+$/, "") || undefined;
+
 export const App: React.FC = () => {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename={routerBasename}>
       <ScrollToTop />
       <div className="min-h-screen bg-[#070709] text-white flex flex-col selection:bg-[#d40000] selection:text-white">
         <Navigation />

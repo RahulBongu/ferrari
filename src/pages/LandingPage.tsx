@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Volume2, VolumeX } from "lucide-react";
 import { getAssetUrl } from "../utils/assetUrl";
 
-// Trim first 5 seconds from start; begins from 5.0s onwards
-const START_TIME = 5.0;
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +22,6 @@ export const LandingPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fadeAnimationRef = useRef<number | null>(null);
-  const hasSeekedToStartRef = useRef(false);
 
   // Smooth audio volume fade using requestAnimationFrame
   const fadeVolume = useCallback((targetVolume: number, duration = 700, onComplete?: () => void) => {
@@ -69,9 +66,9 @@ export const LandingPage: React.FC = () => {
       aud.muted = false;
       aud.volume = 0;
       if (vid && vid.readyState >= 1) {
-        aud.currentTime = Math.max(START_TIME, vid.currentTime);
+        aud.currentTime = vid.currentTime;
       } else {
-        aud.currentTime = START_TIME;
+        aud.currentTime = 0;
       }
 
       const playPromise = aud.play();
@@ -150,13 +147,7 @@ export const LandingPage: React.FC = () => {
 
   const handleVideoLoadedMetadata = () => {
     const vid = videoRef.current;
-    if (vid && !hasSeekedToStartRef.current) {
-      hasSeekedToStartRef.current = true;
-      try {
-        if (vid.currentTime < START_TIME) {
-          vid.currentTime = START_TIME;
-        }
-      } catch {}
+    if (vid) {
       vid.play().catch(() => {});
     }
   };
@@ -180,23 +171,22 @@ export const LandingPage: React.FC = () => {
     if (audioRef.current && videoRef.current) {
       try {
         if (audioRef.current.readyState >= 1) {
-          audioRef.current.currentTime = Math.max(START_TIME, videoRef.current.currentTime);
+          audioRef.current.currentTime = videoRef.current.currentTime;
         }
       } catch {}
     }
   };
 
   const handleVideoEnded = () => {
-    // Synchronous loop from START_TIME (5.0s)
     if (videoRef.current) {
       try {
-        videoRef.current.currentTime = START_TIME;
+        videoRef.current.currentTime = 0;
         videoRef.current.play().catch(() => {});
       } catch {}
     }
     if (audioRef.current) {
       try {
-        audioRef.current.currentTime = START_TIME;
+        audioRef.current.currentTime = 0;
         if (isSoundOn) {
           audioRef.current.play().catch(() => {});
         }
@@ -216,7 +206,7 @@ export const LandingPage: React.FC = () => {
         aud.muted = false;
         aud.volume = 1.0;
         if (vid && vid.readyState >= 1) {
-          aud.currentTime = Math.max(START_TIME, vid.currentTime);
+          aud.currentTime = vid.currentTime;
         }
         aud.play().catch(() => {});
       } catch {}
@@ -237,13 +227,6 @@ export const LandingPage: React.FC = () => {
         isTransitioning ? "opacity-0 scale-105 pointer-events-none" : "opacity-100 scale-100"
       }`}
     >
-      {/* Instant Backdrop to guarantee zero blank flash while 125MB video buffers */}
-      <img
-        src={getAssetUrl("/assets/photos/Ferrari Laferrari.jpg")}
-        alt="Ferrari Hero"
-        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none opacity-60"
-      />
-
       {/* Background Video (Autoplays muted reliably, direct src resolution) */}
       <video
         ref={videoRef}
@@ -253,10 +236,12 @@ export const LandingPage: React.FC = () => {
         loop
         playsInline
         preload="auto"
-        poster={getAssetUrl("/assets/photos/Ferrari Laferrari.jpg")}
         disablePictureInPicture
         controlsList="nodownload nofullscreen noremoteplayback nopictureinpicture"
         onContextMenu={(e) => e.preventDefault()}
+        onCanPlay={() => {
+          videoRef.current?.play().catch(() => {});
+        }}
         onLoadedMetadata={handleVideoLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
         onSeeking={handleVideoSeeking}
