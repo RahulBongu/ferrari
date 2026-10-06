@@ -1,46 +1,48 @@
 /**
  * ExplodedSoundManager.ts
- * Ferrari continuous mouse-wheel / mechanical scrolling sound system.
+ * Parallel audio synchronization engine for the Ferrari exploded-view scrolling experience.
  *
  * Audio Asset:
- * public/assets/audio/ferrari_scroll_mousewheel_continuous.mp3
+ * public/assets/audio/a.mp3 (3.456s technical exploded-view sound effect)
  *
- * Core Behavior:
- * 1. USER IS NOT SCROLLING:
- *    - Completely silent
- *    - No background ambience
- *    - No looping sound
- * 2. USER STARTS SCROLLING:
- *    - Immediately activates the continuous scroll sound (20–40ms fade-in)
- * 3. USER CONTINUES SCROLLING:
- *    - Keeps the same audio continuously playing (loop = true)
- *    - Never restarts repeatedly; seamless uninterrupted mechanical texture
- * 4. AUDIO INTENSITY FOLLOWS SCROLL VELOCITY:
- *    - Velocity mapped smoothly to volume (0.05 to 0.32) and playbackRate (0.95 to 1.18)
- * 5. PARALLEL WITH EXPLODED ANIMATION:
- *    - Driven by the exact same animation damping progress and velocity as the car
- * 6. STOPPING THE SCROLL:
- *    - Smooth fade-out over 80–140ms when velocity falls below threshold
- * 7. PERFORMANCE & AUTOPLAY:
- *    - Single AudioContext, single preloaded AudioBuffer, zero memory leaks
- *    - Unlocks automatically on initial user interaction (wheel, touch, click, keydown)
+ * Parallel Synchronization:
+ * 1. Progress Alignment:
+ *    - Exploded view progress (0.0 to 1.0) maps directly to the audio timeline (0.0s to 3.456s).
+ * 2. Velocity-Mapped Playback Rate:
+ *    - Scroll speed smoothly modulates the playbackRate so audio progress tracks the physical
+ *      frame rendering in real time.
+ * 3. Bidirectional Playback:
+ *    - Scrolling down (exploding): plays forward along the audio timeline.
+ *    - Scrolling up (reassembling): plays the reversed audio buffer parallel to reassembly.
+ * 4. Silence on Rest:
+ *    - When the user stops scrolling, the audio smoothly fades to zero and pauses.
+ *    - When scrolling resumes, playback continues seamlessly from the current progress offset.
+ * 5. Master Output Processing:
+ *    - Low-shelf bass boost + studio dynamics compressor for punchy, clear automotive acoustics.
  */
 
 import { getAssetUrl } from "../utils/assetUrl";
 
 export class FerrariScrollSound {
   private ctx: AudioContext | null = null;
-  private audioBuffer: AudioBuffer | null = null;
+  private audioBufferForward: AudioBuffer | null = null;
+  private audioBufferReverse: AudioBuffer | null = null;
+
   private masterGain: GainNode | null = null;
   private gainNode: GainNode | null = null;
-  private filterNode: BiquadFilterNode | null = null;
+  private bassFilter: BiquadFilterNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private sourceNode: AudioBufferSourceNode | null = null;
 
   private isMuted: boolean = false;
   private isPlaying: boolean = false;
-  private isScrollingActive: boolean = false;
-  private isLoading: boolean = false;
+  private currentDirection: number = 1; // 1 = forward (scroll down), -1 = reverse (scroll up)
+  private playheadOffset: number = 0;   // In audio seconds (0.0 to duration)
+  private playStartTimeCtx: number = 0;  // ctx.currentTime when source started
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
+  private isLoading: boolean = false;
+
+  private readonly DURATION: number = 3.456; // a.mp3 duration in seconds
 
   constructor() {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem("ferrari_sound_enabled") : null;
@@ -52,7 +54,7 @@ export class FerrariScrollSound {
   }
 
   /**
-   * Initializes AudioContext, audio graph, and preloads the continuous audio buffer once.
+   * Initializes AudioContext, mastering chain, and decodes both forward and reverse buffers.
    */
   public init(): void {
     if (this.ctx || typeof window === "undefined") return;
@@ -65,23 +67,33 @@ export class FerrariScrollSound {
 
       this.ctx = new AudioContextClass();
 
-      // Master gain for user sound toggle (SOUND ON / SOUND OFF)
+      // Master output gain
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1.0, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
 
-      // Dynamic gain node for velocity-based volume modulation
+      // Dedicated Analog Bass Boost Shelf (+4.5dB at 115Hz for punchy mechanical depth)
+      this.bassFilter = this.ctx.createBiquadFilter();
+      this.bassFilter.type = "lowshelf";
+      this.bassFilter.frequency.value = 115;
+      this.bassFilter.gain.value = 4.5;
+
+      // Studio Dynamics Compressor (prevents clipping, thickens bass, maximizes clarity)
+      this.compressor = this.ctx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+      this.compressor.knee.setValueAtTime(10, this.ctx.currentTime);
+      this.compressor.ratio.setValueAtTime(4.0, this.ctx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+      this.compressor.release.setValueAtTime(0.20, this.ctx.currentTime);
+
+      // Velocity-modulated gain node
       this.gainNode = this.ctx.createGain();
       this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
 
-      // Lowpass filter for mechanical notch shaping based on speed
-      this.filterNode = this.ctx.createBiquadFilter();
-      this.filterNode.type = "lowpass";
-      this.filterNode.frequency.setValueAtTime(2600, this.ctx.currentTime);
-      this.filterNode.Q.setValueAtTime(1.8, this.ctx.currentTime);
-
-      this.filterNode.connect(this.gainNode);
-      this.gainNode.connect(this.masterGain);
+      // Node graph: source -> gainNode -> bassFilter -> compressor -> masterGain -> destination
+      this.gainNode.connect(this.bassFilter);
+      this.bassFilter.connect(this.compressor);
+      this.compressor.connect(this.masterGain);
+      this.masterGain.connect(this.ctx.destination);
 
       this.preloadAudio();
 
@@ -113,13 +125,13 @@ export class FerrariScrollSound {
   }
 
   /**
-   * Preloads the continuous mouse-wheel sound asset once into memory.
+   * Preloads a.mp3 once and builds the reverse buffer in memory for bidirectional scrubbing.
    */
   private preloadAudio(): void {
-    if (!this.ctx || this.audioBuffer || this.isLoading) return;
+    if (!this.ctx || this.audioBufferForward || this.isLoading) return;
     this.isLoading = true;
 
-    const audioUrl = getAssetUrl("/assets/audio/ferrari_scroll_mousewheel_continuous.mp3");
+    const audioUrl = getAssetUrl("/assets/audio/a.mp3");
     fetch(audioUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -130,20 +142,37 @@ export class FerrariScrollSound {
         return this.ctx.decodeAudioData(arrayBuffer);
       })
       .then((decoded) => {
-        if (decoded) {
-          this.audioBuffer = decoded;
-          // If user was already scrolling while asset loaded, start immediately
-          if (this.isScrollingActive && !this.isPlaying && !this.isMuted) {
-            this.startLoop();
-          }
+        if (decoded && this.ctx) {
+          this.audioBufferForward = decoded;
+          this.audioBufferReverse = this.createReversedBuffer(this.ctx, decoded);
         }
       })
       .catch((err) => {
-        console.warn("Failed to preload Ferrari scroll audio asset:", err);
+        console.warn("Failed to preload Ferrari exploded audio a.mp3:", err);
       })
       .finally(() => {
         this.isLoading = false;
       });
+  }
+
+  /**
+   * Creates an exact reversed audio buffer for seamless reverse scrolling (reassembly).
+   */
+  private createReversedBuffer(ctx: AudioContext, buffer: AudioBuffer): AudioBuffer {
+    const reversed = ctx.createBuffer(
+      buffer.numberOfChannels,
+      buffer.length,
+      buffer.sampleRate
+    );
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      const src = buffer.getChannelData(c);
+      const dest = reversed.getChannelData(c);
+      const len = buffer.length;
+      for (let i = 0, j = len - 1; i < len; i++, j--) {
+        dest[i] = src[j];
+      }
+    }
+    return reversed;
   }
 
   /**
@@ -159,128 +188,156 @@ export class FerrariScrollSound {
   }
 
   /**
-   * Starts the continuous looping audio source node with a very short fade-in (20–40 ms).
-   * Crucial: Only called when starting; NEVER called repeatedly while already playing.
+   * Main per-frame synchronization method:
+   * Keeps audio playback position and playbackRate in exact parallel with scroll progress and velocity.
    */
-  private startLoop(): void {
-    if (!this.ctx || !this.audioBuffer || this.isPlaying || this.isMuted) return;
+  public update(
+    velocity: number,
+    direction: number = 1,
+    progress: number = 0
+  ): void {
+    this.ensureUnlocked();
+    if (!this.ctx || this.isMuted || !this.audioBufferForward) return;
+
+    const t = this.ctx.currentTime;
+    const VELOCITY_THRESHOLD = 0.002;
+    const clampedProgress = Math.max(0, Math.min(1, progress));
+    const targetAudioTime = clampedProgress * this.DURATION;
+    const dir = direction >= 0 ? 1 : -1;
+
+    if (velocity > VELOCITY_THRESHOLD) {
+      // Clear pending stop timer
+      if (this.stopTimer !== null) {
+        clearTimeout(this.stopTimer);
+        this.stopTimer = null;
+      }
+
+      // Calculate the current playhead time of the active source
+      let currentAudioPosition = this.playheadOffset;
+      if (this.isPlaying && this.sourceNode) {
+        const elapsed = (t - this.playStartTimeCtx) * (this.sourceNode.playbackRate.value || 1);
+        currentAudioPosition =
+          this.currentDirection === 1
+            ? this.playheadOffset + elapsed
+            : this.playheadOffset - elapsed;
+      }
+
+      const drift = Math.abs(currentAudioPosition - targetAudioTime);
+      const directionChanged = dir !== this.currentDirection;
+
+      // If not playing, or direction changed, or drift is significant (>0.18s), start/realign node
+      if (!this.isPlaying || directionChanged || drift > 0.18) {
+        this.startAt(targetAudioTime, dir);
+      }
+
+      if (this.isPlaying && this.sourceNode && this.gainNode) {
+        // Natural speed mapping: velocity is (deltaProgress / dt), progress speed * DURATION = rate
+        // Typical scroll velocity is ~0.015 - 0.06; map smoothly between 0.6x and 2.2x
+        const rawRate = (velocity * this.DURATION) / 0.12;
+        // Subtle drift correction to pull playhead towards exact target time
+        const syncCorrection = (targetAudioTime - currentAudioPosition) * (dir === 1 ? 1.5 : -1.5);
+        const targetRate = Math.max(0.55, Math.min(2.4, rawRate + syncCorrection));
+
+        // Volume scales naturally with velocity (0.18 on slow scroll up to 0.85 on fast scroll)
+        const velNorm = Math.min(1.0, (velocity - VELOCITY_THRESHOLD) / 0.06);
+        const targetVolume = 0.18 + Math.pow(velNorm, 0.75) * (0.85 - 0.18);
+
+        this.sourceNode.playbackRate.cancelScheduledValues(t);
+        this.sourceNode.playbackRate.setTargetAtTime(targetRate, t, 0.04);
+
+        this.gainNode.gain.cancelScheduledValues(t);
+        this.gainNode.gain.setTargetAtTime(targetVolume, t, 0.035);
+      }
+    } else {
+      // User has stopped scrolling: fade out smoothly
+      this.fadeToSilence();
+    }
+  }
+
+  /**
+   * Starts playback from a specific audio offset in seconds for a given direction.
+   */
+  private startAt(offsetSeconds: number, direction: number): void {
+    if (!this.ctx || !this.gainNode) return;
+
+    // Stop current source if active
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.stop();
+        this.sourceNode.disconnect();
+      } catch {}
+      this.sourceNode = null;
+    }
+
+    const isForward = direction === 1;
+    const buffer = isForward ? this.audioBufferForward : this.audioBufferReverse;
+    if (!buffer) return;
 
     try {
       const source = this.ctx.createBufferSource();
-      source.buffer = this.audioBuffer;
-      source.loop = true;
-      source.loopStart = 0;
-      source.loopEnd = this.audioBuffer.duration;
+      source.buffer = buffer;
 
-      source.playbackRate.setValueAtTime(1.0, this.ctx.currentTime);
-      source.connect(this.filterNode!);
+      // For forward buffer: offset is offsetSeconds
+      // For reverse buffer: offset is (DURATION - offsetSeconds)
+      const bufferOffset = isForward
+        ? Math.max(0, Math.min(this.DURATION - 0.02, offsetSeconds))
+        : Math.max(0, Math.min(this.DURATION - 0.02, this.DURATION - offsetSeconds));
+
+      source.connect(this.gainNode);
 
       const t = this.ctx.currentTime;
-      this.gainNode!.gain.cancelScheduledValues(t);
-      this.gainNode!.gain.setValueAtTime(0.001, t);
-      this.gainNode!.gain.setTargetAtTime(0.08, t, 0.03); // Fast 30ms fade-in
+      // Smooth micro-fade to eliminate any pop or crackle (20ms)
+      this.gainNode.gain.cancelScheduledValues(t);
+      this.gainNode.gain.setValueAtTime(0.001, t);
+      this.gainNode.gain.setTargetAtTime(0.35, t, 0.02);
 
-      source.start(0);
+      source.start(0, bufferOffset);
+
       this.sourceNode = source;
       this.isPlaying = true;
+      this.currentDirection = direction;
+      this.playheadOffset = offsetSeconds;
+      this.playStartTimeCtx = t;
+
+      // Auto-stop when buffer finishes
+      source.onended = () => {
+        if (this.sourceNode === source) {
+          this.isPlaying = false;
+          this.sourceNode = null;
+        }
+      };
     } catch {
       // Audio start error handling
     }
   }
 
   /**
-   * Main per-frame update called by the animation loop.
-   * Maps velocity and direction directly to volume, playback rate, and filter cutoff.
-   */
-  public update(
-    velocity: number,
-    direction: number = 1,
-    _progress: number = 0
-  ): void {
-    this.ensureUnlocked();
-    if (!this.ctx || this.isMuted) return;
-
-    const t = this.ctx.currentTime;
-    const VELOCITY_THRESHOLD = 0.002;
-    const MAX_VELOCITY = 0.08;
-
-    if (velocity > VELOCITY_THRESHOLD) {
-      this.isScrollingActive = true;
-
-      // Clear any pending fade-out/stop timer
-      if (this.stopTimer !== null) {
-        clearTimeout(this.stopTimer);
-        this.stopTimer = null;
-      }
-
-      // If not currently playing, activate the continuous loop
-      if (!this.isPlaying && this.audioBuffer) {
-        this.startLoop();
-      }
-
-      if (this.isPlaying && this.gainNode && this.sourceNode && this.filterNode) {
-        // Normalize velocity (0.0 to 1.0)
-        const normalized = Math.min(
-          1.0,
-          Math.max(0, (velocity - VELOCITY_THRESHOLD) / (MAX_VELOCITY - VELOCITY_THRESHOLD))
-        );
-        const curve = Math.pow(normalized, 0.85);
-
-        // Map velocity to master volume: 0.05 (very slow) to 0.32 (fast/energetic)
-        const targetVol = 0.05 + curve * (0.32 - 0.05);
-
-        // Map velocity to subtle playback rate: 0.95 to 1.18
-        let targetRate = 0.95 + curve * 0.23;
-        if (direction < 0) {
-          targetRate *= 0.97; // Subtle reverse mechanical pitch nuance
-        }
-
-        // Map velocity to filter cutoff: 2200Hz to 4600Hz
-        const targetCutoff = 2200 + curve * 2400;
-
-        // Smooth non-robotic parameter interpolation
-        this.gainNode.gain.cancelScheduledValues(t);
-        this.gainNode.gain.setTargetAtTime(targetVol, t, 0.035);
-
-        this.sourceNode.playbackRate.cancelScheduledValues(t);
-        this.sourceNode.playbackRate.setTargetAtTime(targetRate, t, 0.045);
-
-        this.filterNode.frequency.cancelScheduledValues(t);
-        this.filterNode.frequency.setTargetAtTime(targetCutoff, t, 0.05);
-      }
-    } else {
-      // Velocity below threshold: smoothly fade towards silence
-      this.fadeToSilence();
-    }
-  }
-
-  /**
    * Compatibility adapter for callers providing (progress, velocity).
    */
-  public updateScroll(_progress: number, velocity: number): void {
-    this.update(velocity, 1, _progress);
+  public updateScroll(progress: number, velocity: number): void {
+    this.update(velocity, 1, progress);
   }
 
   /**
-   * Smoothly fades audio out over 80–140ms when scrolling pauses or ends.
+   * Smoothly fades audio towards zero over 50–90ms when user pauses scrolling.
    */
   public fadeToSilence(): void {
     if (!this.isPlaying || !this.ctx || !this.gainNode) return;
 
     const t = this.ctx.currentTime;
     this.gainNode.gain.cancelScheduledValues(t);
-    this.gainNode.gain.setTargetAtTime(0, t, 0.065); // 80-140ms fade-out curve
+    this.gainNode.gain.setTargetAtTime(0, t, 0.05);
 
     if (this.stopTimer === null) {
       this.stopTimer = setTimeout(() => {
         this.stopLoop();
         this.stopTimer = null;
-      }, 150);
+      }, 110);
     }
   }
 
   /**
-   * Fully stops and releases the source node when completely silent.
+   * Stops the active source node once fully silent.
    */
   private stopLoop(): void {
     if (!this.isPlaying) return;
@@ -292,11 +349,10 @@ export class FerrariScrollSound {
       }
     } catch {}
     this.isPlaying = false;
-    this.isScrollingActive = false;
   }
 
   /**
-   * Immediate stop (when leaving the section or navigating away).
+   * Immediate stop when user leaves the section.
    */
   public stop(): void {
     if (this.stopTimer !== null) {
@@ -311,32 +367,18 @@ export class FerrariScrollSound {
   }
 
   public startAmbience(): void {
-    // Explicitly no background ambience per requirement 1
+    // Explicitly no background ambience
   }
 
   public stopAmbience(): void {
     this.stop();
   }
 
-  public componentWhoosh(): void {
-    // Explicitly no separate component sounds per creative requirement
-  }
-
-  public mechanicalClick(): void {
-    // Explicitly no separate click sounds per creative requirement
-  }
-
-  public heavyPanelMove(): void {
-    // Explicitly no separate component sounds per creative requirement
-  }
-
-  public engineReveal(): void {
-    // Driven solely by continuous mechanical scroll stream
-  }
-
-  public finalSettle(): void {
-    // Driven solely by continuous mechanical scroll stream
-  }
+  public componentWhoosh(): void {}
+  public mechanicalClick(): void {}
+  public heavyPanelMove(): void {}
+  public engineReveal(): void {}
+  public finalSettle(): void {}
 
   /**
    * Sound toggle controller (SOUND ON / SOUND OFF).
