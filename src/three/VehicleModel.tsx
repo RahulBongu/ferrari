@@ -78,6 +78,28 @@ const GLBModel: React.FC<{ url: string; wireframe?: boolean }> = ({ url, wirefra
   return <primitive object={clonedScene} />;
 };
 
+class GLBErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.warn("Failed to parse GLB 3D model, falling back to procedural Ferrari model:", err);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 export const VehicleModel: React.FC<VehicleModelProps> = ({ vehicle, wireframe = false }) => {
   const [modelExists, setModelExists] = useState<boolean>(false);
 
@@ -87,8 +109,11 @@ export const VehicleModel: React.FC<VehicleModelProps> = ({ vehicle, wireframe =
     fetch(vehicle.model3D, { method: "HEAD" })
       .then((res) => {
         const contentType = res.headers.get("content-type") || "";
+        const contentLength = Number(res.headers.get("content-length") || "0");
         if (isMounted) {
-          setModelExists(res.ok && !contentType.includes("text/html"));
+          // Verify response is OK, not an HTML 404 page, and not a 132-byte Git LFS text pointer
+          const isRealBinary = contentLength === 0 || contentLength > 500;
+          setModelExists(res.ok && !contentType.includes("text/html") && isRealBinary);
         }
       })
       .catch(() => {
@@ -102,16 +127,22 @@ export const VehicleModel: React.FC<VehicleModelProps> = ({ vehicle, wireframe =
     };
   }, [vehicle.model3D]);
 
-  if (modelExists === true && vehicle.model3D) {
-    return <GLBModel url={vehicle.model3D} wireframe={wireframe} />;
-  }
-
-  // Fallback to high-detail procedural 3D model with bright, saturated Ferrari paint
-  return (
+  const proceduralFallback = (
     <ProceduralFerrariModel
       color={vehicle.type === "FORMULA" ? "#ff1010" : "#e60000"}
       wireframe={wireframe}
       type={vehicle.type}
     />
   );
+
+  if (modelExists === true && vehicle.model3D) {
+    return (
+      <GLBErrorBoundary fallback={proceduralFallback}>
+        <GLBModel url={vehicle.model3D} wireframe={wireframe} />
+      </GLBErrorBoundary>
+    );
+  }
+
+  // Fallback to high-detail procedural 3D model with bright, saturated Ferrari paint
+  return proceduralFallback;
 };
