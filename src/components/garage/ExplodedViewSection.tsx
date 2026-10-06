@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Loader } from "../common/Loader";
 import { ChevronDown, Volume2, VolumeX } from "lucide-react";
 import { getAssetUrl } from "../../utils/assetUrl";
-import { explodedSoundManager } from "../../audio/ExplodedSoundManager";
+import { soundManager, explodedSoundManager } from "../../audio/ExplodedSoundManager";
 
 const TOTAL_FRAMES = 240;
 
@@ -227,6 +227,8 @@ export const ExplodedViewSection: React.FC = () => {
   return (
     <div
       ref={containerRef}
+      onClick={() => soundManager.ensureUnlocked()}
+      onTouchStart={() => soundManager.ensureUnlocked()}
       className="relative w-full bg-[#070709] select-none"
       style={{ height: "560vh" }} // 5.6 viewports of scroll distance: slower, physical, deliberate exploration
     >
