@@ -495,7 +495,7 @@ export const CarsPage: React.FC = () => {
 
         {/* 3-Column Grid for 15 Cars: Entire card is clickable to open 360 studio */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {vehicles.map((car, index) => (
+          {vehicles.map((car) => (
             <div
               key={car.id}
               onClick={() => setInspectVehicle(car)}
@@ -510,10 +510,6 @@ export const CarsPage: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
 
-                {/* Row/Car Badge */}
-                <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded text-[9px] font-mono-tech uppercase tracking-wider text-[#d40000] font-bold">
-                  ROW {Math.floor(index / 3) + 1} &middot; CAR {(index % 3) + 1}
-                </div>
 
                 {car.year && (
                   <div className="absolute top-3 right-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded text-[10px] font-mono-tech !text-white font-bold">
