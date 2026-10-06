@@ -1,0 +1,204 @@
+@import "tailwindcss";
+@custom-variant light (&:where(.light, .light *));
+@custom-variant dark (&:where(.dark, .dark *));
+@source "../index.html";
+@source "../src/**/*.{ts,tsx,js,jsx}";
+
+@layer base {
+  :root {
+    --color-bg-primary: #070709;
+    --color-bg-surface: #0f0f14;
+    --color-bg-elevated: #16161f;
+    --color-ferrari-red: #d40000;
+    --color-ferrari-racing: #e10600;
+    --color-ferrari-gold: #c5a059;
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-medium: rgba(255, 255, 255, 0.16);
+  }
+
+  html.light {
+    --color-bg-primary: #f6f7f9;
+    --color-bg-surface: #ffffff;
+    --color-bg-elevated: #eef0f4;
+    --color-border-subtle: rgba(0, 0, 0, 0.08);
+    --color-border-medium: rgba(0, 0, 0, 0.16);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: #070709;
+    color: #f3f4f6;
+    font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  html.light body {
+    background-color: #f6f7f9;
+    color: #111118;
+  }
+}
+
+/* Custom automotive fonts and classes */
+.font-display {
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-mono-tech {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Automotive UI micro-elements */
+.red-glow {
+  box-shadow: 0 0 25px -5px rgba(212, 0, 0, 0.4);
+}
+
+.subtle-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.subtle-glass {
+  background: rgba(15, 15, 20, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Hide scrollbars for clean automotive presentation */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Light Mode Luxury Palette Mapping */
+html.light .bg-\[\#070709\] {
+  background-color: #f6f7f9 !important;
+}
+html.light .bg-\[\#0c0c12\],
+html.light .bg-\[\#0f0f14\],
+html.light .bg-\[\#121217\] {
+  background-color: #ffffff !important;
+}
+/* In light mode: default text-white becomes black */
+html.light .text-white {
+  color: #111118 !important;
+}
+html.light .text-white\/80 {
+  color: #22222e !important;
+}
+html.light .text-white\/70,
+html.light .text-white\/60 {
+  color: #444455 !important;
+}
+html.light .text-white\/50,
+html.light .text-white\/40 {
+  color: #666677 !important;
+}
+html.light .text-white\/30,
+html.light .text-white\/20,
+html.light .text-white\/10 {
+  color: #888899 !important;
+}
+
+/* EXCEPTIONS: Only elements explicitly designated to stay white */
+html.light .\!text-white,
+html.light .always-white,
+html.light .always-white *,
+html.light .hero-dark-overlay,
+html.light .hero-dark-overlay *,
+html.light .vehicle-card-text,
+html.light .vehicle-card-text *,
+html.light .dark-card-content,
+html.light .dark-card-content *,
+html.light .bg-\[\#d40000\],
+html.light .bg-\[\#d40000\] *,
+html.light .bg-\[\#b50000\],
+html.light .bg-\[\#b50000\] * {
+  color: #ffffff !important;
+}
+
+html.light .always-white .text-white\/40,
+html.light .hero-dark-overlay .text-white\/40,
+html.light .dark-card-content .text-white\/40,
+html.light .dark-card-content .\!text-white\/40 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+html.light .always-white .text-white\/50,
+html.light .hero-dark-overlay .text-white\/50,
+html.light .dark-card-content .text-white\/50,
+html.light .dark-card-content .\!text-white\/50 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+html.light .always-white .text-white\/60,
+html.light .always-white .text-white\/70,
+html.light .hero-dark-overlay .text-white\/60,
+html.light .hero-dark-overlay .text-white\/70,
+html.light .dark-card-content .text-white\/60,
+html.light .dark-card-content .\!text-white\/60 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+html.light .text-\[\#d40000\],
+html.light .\!text-\[\#d40000\],
+html.light .always-white .text-\[\#d40000\],
+html.light .hero-dark-overlay .text-\[\#d40000\],
+html.light .dark-card-content .text-\[\#d40000\],
+html.light .dark-card-content svg.text-\[\#d40000\],
+.explode-red-stat,
+html.light .explode-red-stat,
+html.dark .explode-red-stat {
+  color: #d40000 !important;
+}
+
+/* Force Scuderia Ferrari description to solid black in light theme */
+html.light .scuderia-desc,
+html.light p.scuderia-desc {
+  color: #000000 !important;
+}
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20,
+html.light .border-white\/30 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light .subtle-glass {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #111118;
+}
+
+/* Ensure landing page keeps its cinematic dark backdrop */
+main.fixed.inset-0.w-screen.h-screen {
+  background-color: #070709 !important;
+  color: #ffffff !important;
+}
+main.fixed.inset-0.w-screen.h-screen .text-white {
+  color: #ffffff !important;
+}
+main.fixed.inset-0.w-screen.h-screen .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+main.fixed.inset-0.w-screen.h-screen .text-white\/35 {
+  color: rgba(255, 255, 255, 0.35) !important;
+}
