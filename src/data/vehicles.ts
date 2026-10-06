@@ -1,6 +1,7 @@
 import type { Vehicle } from "../types/vehicle";
+import { getAssetUrl } from "../utils/assetUrl";
 
-export const vehicles: Vehicle[] = [
+const rawVehicles: Vehicle[] = [
   {
     id: "288-gto",
     name: "Ferrari 288 GTO",
@@ -1024,6 +1025,14 @@ export const vehicles: Vehicle[] = [
     },
   },
 ];
+
+export const vehicles: Vehicle[] = rawVehicles.map((v) => ({
+  ...v,
+  heroImage: getAssetUrl(v.heroImage),
+  thumbnail: getAssetUrl(v.thumbnail),
+  gallery: (v.gallery || []).map(getAssetUrl),
+  model3D: v.model3D ? getAssetUrl(v.model3D) : v.model3D,
+}));
 
 export function getVehicleBySlug(slug: string): Vehicle | undefined {
   return vehicles.find((v) => v.slug === slug || v.id === slug);

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Volume2, VolumeX, ChevronLeft, Menu, X } from "lucide-react";
 import { useTestDriveStore } from "../../store/testDriveStore";
 import { Switch } from "../common/ThemeSwitch";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
@@ -45,7 +46,7 @@ export const Navigation: React.FC = () => {
             <div className="relative h-10 w-auto flex items-center justify-center group-hover:scale-105 transition-transform">
               <div className="absolute inset-0 bg-[#d40000]/35 blur-lg rounded-full pointer-events-none -z-10" />
               <img
-                src="/assets/photos/ferrari_shield.png"
+                src={getAssetUrl("/assets/photos/ferrari_shield.png")}
                 alt="Ferrari Shield Emblem"
                 className="h-9 w-auto object-contain filter drop-shadow-[0_0_10px_rgba(212,0,0,0.8)] drop-shadow-[0_0_20px_rgba(212,0,0,0.45)]"
               />

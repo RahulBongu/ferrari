@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Volume2, VolumeX } from "lucide-react";
+import { getAssetUrl } from "../utils/assetUrl";
 
 // Trim first 5 seconds from start; begins from 5.0s onwards
 const START_TIME = 5.0;
@@ -256,8 +257,8 @@ export const LandingPage: React.FC = () => {
         onEnded={handleVideoEnded}
         className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
       >
-        <source src="/assets/videos/landing.webm#t=5" type="video/webm" />
-        <source src="/assets/videos/landing.mp4#t=5" type="video/mp4" />
+        <source src={getAssetUrl("/assets/videos/landing.webm#t=5")} type="video/webm" />
+        <source src={getAssetUrl("/assets/videos/landing.mp4#t=5")} type="video/mp4" />
       </video>
 
       {/* Soundtrack Audio (Fades in smoothly upon SOUND ON or click) */}
@@ -265,7 +266,7 @@ export const LandingPage: React.FC = () => {
         ref={audioRef}
         playsInline
         preload="auto"
-        src="/assets/audio/landing.m4a#t=5"
+        src={getAssetUrl("/assets/audio/landing.m4a#t=5")}
       />
 
       {/* Neutral Clean Cinematic Vignette */}

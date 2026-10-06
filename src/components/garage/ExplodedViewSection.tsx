@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Loader } from "../common/Loader";
 import { ChevronDown } from "lucide-react";
+import { getAssetUrl } from "../../utils/assetUrl";
 
 const TOTAL_FRAMES = 240;
 
@@ -26,7 +27,7 @@ export const ExplodedViewSection: React.FC = () => {
 
   // Initialize explode_scroll.mp3 audio
   useEffect(() => {
-    const audio = new Audio("/assets/audio/explode_scroll.mp3");
+    const audio = new Audio(getAssetUrl("/assets/audio/explode_scroll.mp3"));
     audio.preload = "auto";
     audio.loop = true;
     audio.volume = 0;
@@ -84,7 +85,7 @@ export const ExplodedViewSection: React.FC = () => {
 
     // Load first frame with top priority
     const firstImg = new Image();
-    firstImg.src = "/assets/exploded/frame-0001.jpg";
+    firstImg.src = getAssetUrl("/assets/exploded/frame-0001.jpg");
     firstImg.onload = () => {
       if (isCancelled) return;
       loaded++;
@@ -105,7 +106,7 @@ export const ExplodedViewSection: React.FC = () => {
     for (let i = 2; i <= TOTAL_FRAMES; i++) {
       const img = new Image();
       const padNum = i.toString().padStart(4, "0");
-      img.src = `/assets/exploded/frame-${padNum}.jpg`;
+      img.src = getAssetUrl(`/assets/exploded/frame-${padNum}.jpg`);
 
       img.onload = () => {
         if (isCancelled) return;
@@ -379,7 +380,7 @@ export const ExplodedViewSection: React.FC = () => {
         <div className="absolute inset-0 w-full h-full flex items-center justify-center z-0 overflow-hidden">
           {/* Instant Assembled Static Backdrop: guarantees ZERO black flash */}
           <img
-            src="/assets/exploded/frame-0001.jpg"
+            src={getAssetUrl("/assets/exploded/frame-0001.jpg")}
             alt="Ferrari Exploded View Assembled"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none -z-10"
           />

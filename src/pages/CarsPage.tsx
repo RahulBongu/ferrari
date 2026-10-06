@@ -10,10 +10,11 @@ import { Link } from "react-router-dom";
 import { X, Layers, Compass, ArrowRight, RotateCw, RefreshCw, Info, Eye } from "lucide-react";
 import { useComparisonStore } from "../store/comparisonStore";
 import { Loader } from "../components/common/Loader";
+import { getAssetUrl } from "../utils/assetUrl";
 
 // Rotating 3D Ferrari Logo component
 const Ferrari3DLogo: React.FC = () => {
-  const gltf = useGLTF("/assets/models/ferrari_logo.glb");
+  const gltf = useGLTF(getAssetUrl("/assets/models/ferrari_logo.glb"));
   const scene = React.useMemo(() => gltf.scene.clone(true), [gltf.scene]);
   return (
     <primitive
@@ -368,7 +369,7 @@ export const CarsPage: React.FC = () => {
         <div className="relative mb-6 flex items-center justify-center group">
           <div className="absolute inset-0 bg-[#d40000]/45 blur-3xl rounded-full scale-125 pointer-events-none -z-10" />
           <img
-            src="/assets/photos/ferrari_shield.png"
+            src={getAssetUrl("/assets/photos/ferrari_shield.png")}
             alt="Scuderia Ferrari Emblem"
             className="h-44 sm:h-52 w-auto object-contain filter drop-shadow-[0_0_25px_rgba(212,0,0,0.85)] drop-shadow-[0_0_50px_rgba(212,0,0,0.45)] group-hover:scale-105 transition-transform duration-300"
           />
